@@ -1,0 +1,5 @@
+# 忽略 node_modules
+frontend/node_modules
+myblogenv
+__pycache__
+**/__pycache__/
