@@ -437,6 +437,11 @@ async def get_article(
     if not article:
         raise NotFoundError("Article not found")
     
+    # 访问时自增view_count
+    article.view_count = (article.view_count or 0) + 1
+    await db.commit()
+    await db.refresh(article)
+    
     # 手动构建响应，避免ORM序列化问题
     from app.schemas.article import UserBasicInfo, TagInfo, CommentBasicInfo
     author_info = UserBasicInfo.model_validate(article.author)

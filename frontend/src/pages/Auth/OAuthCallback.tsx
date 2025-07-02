@@ -58,13 +58,11 @@ const OAuthCallback: React.FC = () => {
           },
         }));
 
-        message.success("OAuth登录成功");
-        setStatus('success');
-        
-        // 延迟跳转，让用户看到成功消息
-        setTimeout(() => {
-          navigate("/");
-        }, 1500);
+        // 启动token检查
+        TokenManager.startTokenCheck();
+
+        message.success('OAuth登录成功！');
+        navigate('/');
 
       } catch (error: any) {
         console.error("OAuth回调处理失败:", error);

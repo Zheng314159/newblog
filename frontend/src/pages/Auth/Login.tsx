@@ -81,14 +81,13 @@ const Login: React.FC = () => {
       dispatch(loginSuccess({
         accessToken: access_token,
         refreshToken: refresh_token,
-        userInfo: {
-          id: userInfo.id,
-          username: userInfo.username,
-          email: userInfo.email,
-          role: userInfo.role,
-        },
+        userInfo: userInfo,
       }));
-      message.success("登录成功");
+      
+      // 启动token检查
+      TokenManager.startTokenCheck();
+      
+      message.success("登录成功！");
       navigate("/");
     } catch (e: any) {
       const msg = e?.response?.data?.message || e.message || "登录失败";
@@ -123,24 +122,35 @@ const Login: React.FC = () => {
         <div style={{ marginBottom: 24 }}>
           {/* GitHub 登录按钮 */}
           {githubProvider && (
-            <Button 
-              type="default" 
-              block 
-              size="large"
-              icon={<GithubOutlined />}
-              onClick={() => handleOAuthLogin('github')}
-              disabled={githubProvider.status === 'unavailable'}
-              style={{ 
-                marginBottom: 12,
-                height: 44,
-                fontSize: 16,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              使用 GitHub 登录
-            </Button>
+            <>
+              <Button 
+                type="default" 
+                block 
+                size="large"
+                icon={<GithubOutlined />}
+                onClick={() => handleOAuthLogin('github')}
+                disabled={githubProvider.status === 'unavailable'}
+                style={{ 
+                  marginBottom: 12,
+                  height: 44,
+                  fontSize: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                使用 GitHub 登录
+              </Button>
+              {githubProvider.status === 'unavailable' && (
+                <Alert
+                  message="GitHub 登录暂时不可用"
+                  description={githubProvider.message || 'GitHub 登录功能暂时不可用。请稍后再试或使用其他登录方式。'}
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                />
+              )}
+            </>
           )}
 
           {/* Google 登录按钮 - 只在网络可用时显示 */}

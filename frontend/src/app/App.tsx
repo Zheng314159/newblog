@@ -30,6 +30,8 @@ const App: React.FC = () => {
               role: userInfo.role,
             },
           }));
+          // 启动token检查
+          TokenManager.startTokenCheck();
         })
         .catch(() => {
           // 如果获取用户信息失败，清除无效的token
@@ -40,6 +42,11 @@ const App: React.FC = () => {
       // 如果没有token，直接设置loading为false
       dispatch(setLoading(false));
     }
+
+    // 清理函数
+    return () => {
+      TokenManager.stopTokenCheck();
+    };
   }, [dispatch]);
 
   return (

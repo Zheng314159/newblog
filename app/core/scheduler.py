@@ -14,6 +14,8 @@ from app.models.article import Article, ArticleStatus
 from app.models.comment import Comment
 from app.models.tag import Tag
 from app.core.config import settings
+from app.core.websocket import manager
+from app.models.system_notification import SystemNotification
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,33 @@ class TaskScheduler:
             replace_existing=True
         )
         
+        # 每分钟推送定时任务状态到首页频道
+        self.scheduler.add_job(
+            self._push_all_task_status,
+            CronTrigger(minute='*'),  # 每分钟执行
+            id='push_all_task_status',
+            name='推送所有定时任务状态',
+            replace_existing=True
+        )
+        
+        # 每分钟推送数据库系统通知
+        self.scheduler.add_job(
+            self._push_db_system_notifications,
+            CronTrigger(minute='*'),
+            id='push_db_system_notifications',
+            name='推送数据库系统通知',
+            replace_existing=True
+        )
+        
+        # 每分钟推送业务统计
+        self.scheduler.add_job(
+            self._push_business_statistics,
+            CronTrigger(minute='*'),
+            id='push_business_statistics',
+            name='推送业务统计',
+            replace_existing=True
+        )
+        
         logger.info("定时任务已添加")
     
     async def _cleanup_redis_blacklist(self):
@@ -141,29 +170,28 @@ class TaskScheduler:
         """发送系统通知"""
         try:
             logger.info("开始发送系统通知...")
-            
             # 模拟发送系统通知
             notifications = [
                 {
-                    "type": "system",
                     "title": "系统维护通知",
-                    "content": "系统正常运行中，所有功能正常",
-                    "level": "info"
+                    "message": "系统正常运行中，所有功能正常",
+                    "notification_type": "info"
                 },
                 {
-                    "type": "performance",
                     "title": "性能监控",
-                    "content": "系统性能良好，响应时间正常",
-                    "level": "info"
+                    "message": "系统性能良好，响应时间正常",
+                    "notification_type": "info"
                 }
             ]
-            
-            # 这里可以集成实际的通知系统（如 WebSocket、邮件等）
+            # 推送到WebSocket首页频道
             for notification in notifications:
-                logger.info(f"发送通知: {notification['title']} - {notification['content']}")
-            
+                msg = {
+                    "type": "system_notification",
+                    "data": notification
+                }
+                logger.info(f"发送通知: {notification['title']} - {notification['message']}")
+                await manager.broadcast_to_channel(msg, "home")
             logger.info("系统通知发送完成")
-            
         except Exception as e:
             logger.error(f"发送系统通知失败: {e}")
     
@@ -244,19 +272,19 @@ class TaskScheduler:
             email_tasks = [
                 {
                     "type": "welcome",
-                    "recipient": "new_user@example.com",
+                    "recipient": "contemnewton@163.com",
                     "subject": "欢迎加入我们的博客系统",
                     "content": "感谢您注册我们的博客系统！"
                 },
                 {
                     "type": "notification",
-                    "recipient": "admin@example.com",
+                    "recipient": "contemnewton@163.com",
                     "subject": "系统运行状态报告",
                     "content": "系统运行正常，所有服务都在线。"
                 },
                 {
                     "type": "digest",
-                    "recipient": "subscriber@example.com",
+                    "recipient": "contemnewton@163.com",
                     "subject": "今日热门文章摘要",
                     "content": "查看今日最受欢迎的文章和评论。"
                 }
@@ -346,6 +374,22 @@ class TaskScheduler:
         except Exception as e:
             logger.error(f"系统健康检查失败: {e}")
     
+    async def _push_all_task_status(self):
+        """推送所有定时任务状态到首页频道"""
+        try:
+            jobs = self.get_job_status().get("jobs", [])
+            msg = {
+                "type": "task_status",
+                "data": {
+                    "jobs": jobs,
+                    "updated_at": datetime.now().isoformat()
+                }
+            }
+            await manager.broadcast_to_channel(msg, "home")
+            logger.info("已推送所有定时任务状态到首页频道")
+        except Exception as e:
+            logger.error(f"推送定时任务状态失败: {e}")
+    
     def get_job_status(self) -> Dict[str, Any]:
         """获取任务状态"""
         if not self._running:
@@ -364,6 +408,68 @@ class TaskScheduler:
             "status": "running",
             "jobs": jobs
         }
+    
+    async def _push_db_system_notifications(self):
+        """推送数据库中的未发送系统通知到首页频道"""
+        try:
+            async with async_session() as session:
+                result = await session.execute(
+                    select(SystemNotification).where(SystemNotification.is_sent == False)
+                )
+                notifications = result.scalars().all()
+                for n in notifications:
+                    msg = {
+                        "type": "system_notification",
+                        "data": {
+                            "id": n.id,
+                            "title": n.title,
+                            "message": n.message,
+                            "notification_type": n.notification_type
+                        }
+                    }
+                    await manager.broadcast_to_channel(msg, "home")
+                    n.is_sent = True
+                await session.commit()
+                if notifications:
+                    logger.info(f"推送了{len(notifications)}条系统通知")
+        except Exception as e:
+            logger.error(f"推送数据库系统通知失败: {e}")
+    
+    async def _push_business_statistics(self):
+        """推送实际业务统计到首页频道"""
+        try:
+            async with async_session() as session:
+                today = datetime.now().date()
+                user_count = await session.scalar(select(func.count(User.id)))
+                today_users = await session.scalar(
+                    select(func.count(User.id)).where(func.date(User.created_at) == today)
+                )
+                article_count = await session.scalar(select(func.count(Article.id)))
+                today_articles = await session.scalar(
+                    select(func.count(Article.id)).where(func.date(Article.created_at) == today)
+                )
+                comment_count = await session.scalar(select(func.count(Comment.id)))
+                today_comments = await session.scalar(
+                    select(func.count(Comment.id)).where(func.date(Comment.created_at) == today)
+                )
+                msg = {
+                    "type": "task_status",
+                    "data": {
+                        "jobs": [
+                            {"id": f"today_users_{today}", "name": "今日新增用户", "next_run_time": "", "count": today_users},
+                            {"id": f"today_articles_{today}", "name": "今日新增文章", "next_run_time": "", "count": today_articles},
+                            {"id": f"today_comments_{today}", "name": "今日新增评论", "next_run_time": "", "count": today_comments},
+                            {"id": f"total_users", "name": "用户总数", "next_run_time": "", "count": user_count},
+                            {"id": f"total_articles", "name": "文章总数", "next_run_time": "", "count": article_count},
+                            {"id": f"total_comments", "name": "评论总数", "next_run_time": "", "count": comment_count}
+                        ],
+                        "updated_at": datetime.now().isoformat()
+                    }
+                }
+                await manager.broadcast_to_channel(msg, "home")
+                logger.info("已推送业务统计到首页频道")
+        except Exception as e:
+            logger.error(f"推送业务统计失败: {e}")
 
 
 # 全局调度器实例

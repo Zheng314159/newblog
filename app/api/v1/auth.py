@@ -208,8 +208,8 @@ async def register(
     
     # Store refresh token in Redis
     await redis_manager.set(
-        f"refresh_token:{db_user.id}",
-        refresh_token,
+        f"refresh_token:{db_user.id}:{refresh_token}",
+        "valid",
         expire=7 * 24 * 60 * 60  # 7 days
     )
     
@@ -249,8 +249,8 @@ async def login(
     
     # Store refresh token in Redis
     await redis_manager.set(
-        f"refresh_token:{user.id}",
-        refresh_token,
+        f"refresh_token:{user.id}:{refresh_token}",
+        "valid",
         expire=7 * 24 * 60 * 60  # 7 days
     )
     
@@ -266,7 +266,7 @@ async def refresh_token(
     refresh_data: RefreshTokenRequest,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    """Refresh access token"""
+    """Refresh access token (multi-device support)"""
     # Verify refresh token
     payload = verify_token(refresh_data.refresh_token)
     if not payload or payload.get("type") != "refresh":
@@ -274,19 +274,15 @@ async def refresh_token(
     
     user_id = payload.get("user_id")
     username = payload.get("sub")
-    
-    # Check if refresh token exists in Redis
-    stored_token = await redis_manager.get(f"refresh_token:{user_id}")
-    if not stored_token or stored_token != refresh_data.refresh_token:
+    # 多端：校验refresh_token:{user_id}:{refresh_token}
+    exists = await redis_manager.exists(f"refresh_token:{user_id}:{refresh_data.refresh_token}")
+    if not exists:
         raise AuthenticationError("Invalid refresh token")
-    
     # Get user
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
     if not user or not user.is_active:
         raise AuthenticationError("User not found or inactive")
-    
     # Create new tokens
     access_token = create_access_token(
         data={"sub": user.username, "user_id": user.id, "role": user.role.value}
@@ -294,14 +290,12 @@ async def refresh_token(
     new_refresh_token = create_refresh_token(
         data={"sub": user.username, "user_id": user.id}
     )
-    
-    # Update refresh token in Redis
+    # 多端：存储新refresh token，不删除旧的
     await redis_manager.set(
-        f"refresh_token:{user.id}",
-        new_refresh_token,
-        expire=7 * 24 * 60 * 60  # 7 days
+        f"refresh_token:{user.id}:{new_refresh_token}",
+        "valid",
+        expire=7 * 24 * 60 * 60
     )
-    
     return Token(
         access_token=access_token,
         refresh_token=new_refresh_token,

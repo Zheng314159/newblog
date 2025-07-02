@@ -32,6 +32,7 @@ class Article(ArticleBase, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     published_at: Optional[datetime] = None
+    view_count: int = Field(default=0, description="浏览量")
     
     # Relationships
     author: Optional["User"] = Relationship(back_populates="articles")

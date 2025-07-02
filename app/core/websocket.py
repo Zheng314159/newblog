@@ -20,7 +20,7 @@ class ConnectionManager:
     
     async def connect(self, websocket: WebSocket, user: User):
         """建立WebSocket连接"""
-        await websocket.accept()
+        # await websocket.accept()  # 已在 endpoint 处 accept，这里不再 accept
         self.active_connections[user.id] = websocket
         self.user_subscriptions[user.id] = set()
         logger.info(f"User {user.username} connected via WebSocket")

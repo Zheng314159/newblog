@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from app.core.database import async_session
 from app.models.user import User, UserRole
+from app.models.media import MediaFile  # 显式导入，确保关系注册
 from app.core.security import get_password_hash
 
 async def create_admin():

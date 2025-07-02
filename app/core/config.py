@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     https_proxy: Optional[str] = None
     no_proxy: Optional[str] = None
     
+    # Scheduler/Notification dynamic config
+    scheduler_cleanup_redis_enabled: bool = Field(default=True, env="SCHEDULER_CLEANUP_REDIS_ENABLED")
+    scheduler_cleanup_redis_cron: str = Field(default="0 * * * *", env="SCHEDULER_CLEANUP_REDIS_CRON")
+    scheduler_system_notification_enabled: bool = Field(default=True, env="SCHEDULER_SYSTEM_NOTIFICATION_ENABLED")
+    scheduler_system_notification_cron: str = Field(default="5 * * * *", env="SCHEDULER_SYSTEM_NOTIFICATION_CRON")
+    notification_websocket_enabled: bool = Field(default=True, env="NOTIFICATION_WEBSOCKET_ENABLED")
+    notification_email_enabled: bool = Field(default=False, env="NOTIFICATION_EMAIL_ENABLED")
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

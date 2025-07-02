@@ -41,13 +41,14 @@ from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.responses import RedirectResponse
 from sqlalchemy import select, delete
-from app.models.user import User
+from app.models.user import User, OAuthAccount
 from app.models.article import Article
 from app.models.tag import Tag, ArticleTag
 from app.models.comment import Comment
 from app.core.security import verify_password
 from app.models.user import UserRole
 from app.models.media import MediaFile
+from app.models.system_notification import SystemNotification
 
 ADMIN_PATH = "/admin"  # 后台路径恢复为/admin，保证SQLAdmin静态资源和JS事件正常
 
@@ -140,7 +141,7 @@ async def lifespan(app: FastAPI):
                     return False
 
     class ArticleAdmin(ModelView, model=Article):
-        column_list = ["id", "title", "author_id", "status", "created_at"]
+        column_list = ["id", "title", "author_id", "status", "view_count", "created_at"]
         can_create = True
         can_edit = True
         can_delete = True
@@ -184,6 +185,17 @@ async def lifespan(app: FastAPI):
         form_include_pk = False
         form_excluded_columns = ["created_at"]
 
+    class ArticleTagAdmin(ModelView, model=ArticleTag):
+        column_list = ["id", "article_id", "tag_id"]
+        can_create = True
+        can_edit = True
+        can_delete = True
+        can_view_details = True
+        name = "文章标签关联"
+        name_plural = "文章标签关联"
+        form_include_pk = False
+        form_excluded_columns = []
+
     class CommentAdmin(ModelView, model=Comment):
         column_list = ["id", "article_id", "author_id", "content", "created_at", "is_approved"]
         can_create = True
@@ -226,11 +238,52 @@ async def lifespan(app: FastAPI):
         name = "多媒体文件"
         name_plural = "多媒体文件"
 
+    class OAuthAccountAdmin(ModelView, model=OAuthAccount):
+        column_list = ["id", "user_id", "provider", "provider_user_id", "provider_username", "created_at", "updated_at"]
+        can_create = False
+        can_edit = False
+        can_delete = True
+        can_view_details = True
+        name = "OAuth账号绑定"
+        name_plural = "OAuth账号绑定"
+        form_include_pk = False
+        form_excluded_columns = ["access_token", "refresh_token"]
+
+    class SystemNotificationAdmin(ModelView, model=SystemNotification):
+        column_list = ["id", "title", "message", "notification_type", "created_at", "is_sent", "admin_id"]
+        can_create = True
+        can_edit = True
+        can_delete = True
+        can_view_details = True
+        name = "系统通知"
+        name_plural = "系统通知"
+        form_include_pk = False
+        form_excluded_columns = ["created_at"]
+
+        async def is_accessible(self, request):
+            # 只有管理员能访问
+            user_id = request.session.get("user_id")
+            if not user_id:
+                return False
+            async with async_session() as session:
+                user = await session.get(User, user_id)
+                return user and user.role == UserRole.ADMIN
+
+        async def insert_model(self, request, data):
+            # 自动填充 admin_id 字段
+            user_id = request.session.get("user_id")
+            if user_id:
+                data["admin_id"] = user_id
+            return await super().insert_model(request, data)
+
     admin.add_view(UserAdmin)
+    admin.add_view(OAuthAccountAdmin)
     admin.add_view(ArticleAdmin)
     admin.add_view(TagAdmin)
+    admin.add_view(ArticleTagAdmin)
     admin.add_view(CommentAdmin)
     admin.add_view(MediaFileAdmin)
+    admin.add_view(SystemNotificationAdmin)
     
     yield
     

@@ -1,16 +1,73 @@
 import React, { useEffect, useState } from "react";
-import { List, Tag, Typography, Spin, Card, Image, message, App } from "antd";
+import { 
+  List, 
+  Tag, 
+  Typography, 
+  Spin, 
+  Card, 
+  Image, 
+  message, 
+  App, 
+  Carousel, 
+  Button, 
+  Row, 
+  Col, 
+  Statistic 
+} from "antd";
+import { 
+  FileTextOutlined, 
+  UserOutlined, 
+  PictureOutlined, 
+  EyeOutlined 
+} from "@ant-design/icons";
 import { getArticles } from "../../api/article";
 import { getMediaList } from "../../api/upload";
+import { getStatistics } from "../../api/config";
 import { useNavigate } from "react-router-dom";
+import { connectWebSocket, disconnectWebSocket } from "../../api/websocket";
 
-const { Title } = Typography;
+const { Title, Paragraph } = Typography;
 
 const Home: React.FC = () => {
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [media, setMedia] = useState<any[]>([]);
+  const [statistics, setStatistics] = useState({
+    total_articles: 0,
+    published_articles: 0,
+    total_users: 0,
+    active_users: 0,
+    total_media: 0,
+    total_views: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [taskStatus, setTaskStatus] = useState<any>(null);
   const navigate = useNavigate();
+
+  const carouselItems = [
+    {
+      id: 1,
+      title: "欢迎来到学术博客系统",
+      description: "分享知识，交流思想，共同进步",
+      image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&h=400&fit=crop",
+      link: "/edit/new"
+    },
+    {
+      id: 2,
+      title: "多媒体资源库",
+      description: "丰富的图片、视频和文档资源",
+      image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop",
+      link: "/media"
+    },
+    {
+      id: 3,
+      title: "学术交流平台",
+      description: "与同行学者深入讨论，碰撞思想火花",
+      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=400&fit=crop",
+      link: "/search"
+    }
+  ];
 
   useEffect(() => {
     setLoading(true);
@@ -24,11 +81,206 @@ const Home: React.FC = () => {
     getMediaList()
       .then((res) => setMedia((res.data || []).filter((m: any) => m.uploader_role === 'ADMIN')))
       .catch(() => message.error("获取多媒体文件失败"));
+    
+    // 获取统计数据
+    setStatsLoading(true);
+    getStatistics()
+      .then((res) => {
+        setStatistics(res.data);
+        setStatsLoading(false);
+      })
+      .catch(() => {
+        message.error("获取统计数据失败");
+        setStatsLoading(false);
+      });
+
+    // WebSocket 实时通知
+    const token = localStorage.getItem("access_token");
+    const ws = connectWebSocket(token || undefined);
+    ws.onmessage = (event) => {
+      console.log('WS收到消息:', event.data);
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type && msg.type.includes("notification")) {
+          setNotifications((prev) => [msg, ...prev].slice(0, 5));
+        } else if (msg.type === "task_status") {
+          setTaskStatus(msg.data);
+        }
+      } catch (e) {}
+    };
+    return () => {
+      disconnectWebSocket();
+    };
   }, []);
+
+  const renderCarousel = () => (
+    <Carousel autoplay style={{ marginBottom: 32 }}>
+      {carouselItems.map(item => (
+        <div key={item.id}>
+          <div
+            style={{
+              height: 400,
+              background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${item.image})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              textAlign: 'center'
+            }}
+          >
+            <div>
+              <Title level={1} style={{ color: 'white', marginBottom: 16 }}>
+                {item.title}
+              </Title>
+              <Paragraph style={{ color: 'white', fontSize: 18, marginBottom: 24 }}>
+                {item.description}
+              </Paragraph>
+              <Button 
+                type="primary" 
+                size="large"
+                onClick={() => navigate(item.link)}
+              >
+                了解更多
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </Carousel>
+  );
+
+  const renderStatistics = () => (
+    <Card style={{ marginBottom: 32 }}>
+      <Row gutter={16}>
+        <Col span={6}>
+          <Statistic
+            title="总文章数"
+            value={statistics.total_articles}
+            prefix={<FileTextOutlined />}
+            loading={statsLoading}
+          />
+        </Col>
+        <Col span={6}>
+          <Statistic
+            title="活跃用户"
+            value={statistics.active_users}
+            prefix={<UserOutlined />}
+            loading={statsLoading}
+          />
+        </Col>
+        <Col span={6}>
+          <Statistic
+            title="媒体资源"
+            value={statistics.total_media}
+            prefix={<PictureOutlined />}
+            loading={statsLoading}
+          />
+        </Col>
+        <Col span={6}>
+          <Statistic
+            title="总浏览量"
+            value={statistics.total_views}
+            prefix={<EyeOutlined />}
+            loading={statsLoading}
+          />
+        </Col>
+      </Row>
+    </Card>
+  );
 
   return (
     <App>
+      {/* 悬浮任务状态栏 */}
+      {taskStatus && (
+        <div
+          style={{
+            position: "fixed",
+            top: notifications.length > 0 ? 48 : 0,
+            left: 0,
+            width: "100%",
+            zIndex: 999,
+            background: "none", // 无背景色
+            color: "#2f54eb",
+            fontWeight: "bold",
+            fontSize: 15,
+            textAlign: "center",
+            padding: "8px 0",
+            borderBottom: "none",
+            boxShadow: "none",
+            overflow: "hidden",
+            whiteSpace: "nowrap"
+          }}
+        >
+          <div style={{
+            display: "inline-block",
+            whiteSpace: "nowrap",
+            animation: "marquee-task 18s linear infinite",
+            minWidth: "100%"
+          }}>
+            <span style={{ marginRight: 16 }}>定时任务：</span>
+            {taskStatus.jobs && taskStatus.jobs.length > 0 ? (
+              taskStatus.jobs.map((job: any, idx: number) => (
+                <span key={job.id || (job.name + idx)} style={{ margin: "0 12px" }}>
+                  {job.name}（下次: {job.next_run_time ? job.next_run_time.replace('T', ' ').slice(0, 19) : '无'}）
+                </span>
+              ))
+            ) : (
+              <span>暂无任务</span>
+            )}
+          </div>
+        </div>
+      )}
+      {/* 悬浮通知栏 */}
+      {notifications.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            zIndex: 1000,
+            background: "none", // 无背景色
+            color: "#d46b08",      // 醒目橙色字体
+            fontWeight: "bold",
+            fontSize: 18,
+            textAlign: "center",
+            padding: "12px 0",
+            boxShadow: "none",
+            overflow: "hidden",
+            whiteSpace: "nowrap"
+          }}
+        >
+          <div style={{
+            display: "inline-block",
+            whiteSpace: "nowrap",
+            animation: "marquee-notify 15s linear infinite",
+            minWidth: "100%"
+          }}>
+            {notifications.map((n, idx) => (
+              <span key={n.data?.id || n.id || (n.data?.title + n.data?.message + idx)} style={{ margin: "0 16px" }}>
+                <b>{n.data?.title || n.type}</b>: {n.data?.message || n.data?.content}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* 滚动动画样式 */}
+      <style>{`
+        @keyframes marquee-notify {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        @keyframes marquee-task {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
       <div>
+        {renderCarousel()}
+        {renderStatistics()}
+        
         <Title level={2}>最新文章</Title>
         <Spin spinning={loading}>
           <List

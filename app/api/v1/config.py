@@ -1,6 +1,14 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.core.config import settings, reload_settings
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import get_db
+from app.models.article import Article
+from app.models.user import User
+from app.models.media import MediaFile
+from sqlmodel import SQLModel
+from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -116,4 +124,68 @@ async def config_health() -> Dict[str, Any]:
         "oauth_enabled": bool(settings.github_client_id or settings.google_client_id),
         "database_configured": bool(settings.database_url),
         "redis_configured": bool(settings.redis_url),
-    } 
+    }
+
+@router.get("/statistics")
+async def get_statistics(
+    db: AsyncSession = Depends(get_db)
+):
+    """获取系统统计数据"""
+    try:
+        # 获取文章总数
+        result = await db.execute(select(func.count(Article.id)))
+        total_articles = result.scalar() or 0
+        
+        # 获取已发布文章数
+        result = await db.execute(select(func.count(Article.id)).where(Article.status == 'published'))
+        published_articles = result.scalar() or 0
+        
+        # 获取用户总数
+        result = await db.execute(select(func.count(User.id)))
+        total_users = result.scalar() or 0
+        
+        # 获取活跃用户数（有发布文章的用户）
+        result = await db.execute(
+            select(func.count(User.id.distinct()))
+            .select_from(User)
+            .join(Article, User.id == Article.author_id)
+            .where(Article.status == 'published')
+        )
+        active_users = result.scalar() or 0
+        
+        # 获取媒体文件总数
+        result = await db.execute(select(func.count(MediaFile.id)))
+        total_media = result.scalar() or 0
+        
+        # 按类型统计媒体文件
+        result = await db.execute(
+            select(MediaFile.type, func.count(MediaFile.id))
+            .group_by(MediaFile.type)
+        )
+        media_by_type = dict(result.all())
+        
+        # 真实总浏览量：所有已发布文章的view_count之和
+        result = await db.execute(select(func.sum(Article.view_count)).where(Article.status == 'published'))
+        total_views = result.scalar() or 0
+        
+        return {
+            "total_articles": total_articles,
+            "published_articles": published_articles,
+            "total_users": total_users,
+            "active_users": active_users,
+            "total_media": total_media,
+            "media_by_type": media_by_type,
+            "total_views": total_views
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取统计数据失败: {str(e)}")
+
+@router.get("/health")
+async def health_check():
+    """健康检查"""
+    return {"status": "healthy", "message": "系统运行正常"}
+
+@router.get("/tables", summary="获取所有数据库表名")
+def get_all_tables():
+    table_names = list(SQLModel.metadata.tables.keys())
+    return JSONResponse(content={"tables": table_names}) 

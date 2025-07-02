@@ -40,6 +40,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
     """Authentication middleware"""
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # WebSocket路径白名单，直接放行
+        if request.url.path.startswith("/api/v1/ws"):
+            logger.info(f"WebSocket path, skipping auth: {request.url.path}")
+            return await call_next(request)
+        
         # 静态资源放行：图片和视频和多媒体列表
         if request.url.path.startswith("/api/v1/articles/images/") or \
            request.url.path.startswith("/api/v1/articles/videos/") or \
@@ -57,9 +62,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         public_paths = [
             "/", "/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico",
             "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/config",
-            "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/send-verification-code",
+            "/api/v1/auth/refresh", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/send-verification-code",
             "/api/v1/articles", "/api/v1/articles/",  # 允许匿名访问文章列表
             "/api/v1/tags/popular",  # 允许匿名访问热门标签
+            "/api/v1/config/statistics",  # 允许匿名访问统计数据
             "/admin", "/admin/",  # 放行admin后台
             "/jianai", "/jianai/",  # 放行自定义后台路径
             ADMIN_PATH, ADMIN_PATH + "/",

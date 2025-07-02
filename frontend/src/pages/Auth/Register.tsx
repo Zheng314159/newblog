@@ -103,6 +103,9 @@ const Register: React.FC = () => {
           },
         }));
         
+        // 启动token检查
+        TokenManager.startTokenCheck();
+        
         message.success("注册成功，已自动登录");
         navigate("/"); // 跳转到首页
       }

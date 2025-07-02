@@ -15,7 +15,7 @@ router = APIRouter(tags=["websocket"])
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket连接端点"""
     try:
-        # 接受连接
+        # 接受连接，只调用一次
         await websocket.accept()
         
         # 等待认证消息
@@ -58,19 +58,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "error",
                     "data": {"message": "Internal server error"}
                 }))
-    
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         try:
             await websocket.close(code=4000, reason="Internal error")
-        except:
-            pass
+        except Exception as close_err:
+            logger.error(f"Error closing websocket: {close_err}")
 
 
 async def handle_websocket_message(user: User, data: dict):
     """处理WebSocket消息"""
+    logger.info(f"收到WebSocket消息: {data}")
     message_type = data.get("type")
     
     if message_type == "subscribe":
@@ -106,6 +106,25 @@ async def handle_websocket_message(user: User, data: dict):
         await manager.send_personal_message({
             "type": "subscriptions_list",
             "data": {"subscriptions": subscriptions}
+        }, user.id)
+    
+    elif message_type == "broadcast":
+        # 只有管理员可用
+        if getattr(user, "role", None) != "ADMIN":
+            await manager.send_personal_message({
+                "type": "error",
+                "data": {"message": "Admin only"}
+            }, user.id)
+            return
+        msg = data.get("data", {}).get("message")
+        channel = data.get("data", {}).get("channel")
+        if channel:
+            await manager.broadcast_to_channel(msg, channel)
+        else:
+            await manager.broadcast_to_all(msg)
+        await manager.send_personal_message({
+            "type": "broadcast_success",
+            "data": {"channel": channel}
         }, user.id)
     
     else:

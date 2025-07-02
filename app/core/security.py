@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_db, async_session
 from app.models.user import User, UserRole
 
 # Configure logging
@@ -130,20 +130,17 @@ async def get_current_user_ws(token: str) -> Optional[User]:
         payload = verify_token(token)
         if payload is None:
             return None
-        
         username: str = payload.get("sub")
         if username is None:
             return None
-        
         token_type = payload.get("type")
         if token_type != "access":
             return None
-        
-        # 这里需要数据库连接，但WebSocket连接中不方便注入
-        # 可以考虑使用缓存或简化验证
-        # 暂时返回None，实际使用时需要完善
-        return None
-        
+        # 查数据库获取用户
+        async with async_session() as db:
+            result = await db.execute(select(User).where(User.username == username))
+            user = result.scalar_one_or_none()
+            return user
     except JWTError:
         return None
 
