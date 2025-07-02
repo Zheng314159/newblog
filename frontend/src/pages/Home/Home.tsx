@@ -54,10 +54,60 @@ const Home: React.FC = () => {
           <Title level={3}>最新多媒体</Title>
           <div style={{ display: "flex", gap: 16 }}>
             {media.filter(m => m.type === "image").slice(0,3).map(img => (
-              <Card key={img.filename} hoverable style={{ width: 120 }} cover={<Image src={img.url} alt={img.filename} style={{ height: 80, objectFit: "cover" }} />} actions={[<a href={img.url} download target="_blank" rel="noopener noreferrer">下载</a>]} />
+              <Card key={img.filename} hoverable style={{ width: 120 }}
+                cover={<Image src={img.url} alt={img.filename} style={{ height: 80, objectFit: "cover" }} />}
+                actions={[<a href={img.url} download target="_blank" rel="noopener noreferrer">下载</a>]}
+              >
+                <div style={{ fontSize: 12, wordBreak: 'break-all', textAlign: 'center' }} title={img.filename}>
+                  <span style={{
+                    display: 'inline-block',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'bottom'
+                  }}>{img.filename}</span>
+                </div>
+              </Card>
             ))}
             {media.filter(m => m.type === "video").slice(0,3).map(vid => (
-              <Card key={vid.filename} hoverable style={{ width: 160 }} cover={<video src={vid.url} controls style={{ width: "100%", height: 80, objectFit: "cover" }} />} actions={[<a href={vid.url} download target="_blank" rel="noopener noreferrer">下载</a>]} />
+              <Card key={vid.filename} hoverable style={{ width: 160 }}
+                cover={<video src={vid.url} controls style={{ width: "100%", height: 80, objectFit: "cover" }} />}
+                actions={[<a href={vid.url} download target="_blank" rel="noopener noreferrer">下载</a>]}
+              >
+                <div style={{ fontSize: 12, wordBreak: 'break-all', textAlign: 'center' }} title={vid.filename}>
+                  <span style={{
+                    display: 'inline-block',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'bottom'
+                  }}>{vid.filename}</span>
+                </div>
+              </Card>
+            ))}
+            {media.filter(m => m.type === "pdf").slice(0,3).map(pdf => (
+              <Card key={pdf.filename} hoverable style={{ width: 120 }}
+                cover={<div style={{height:80,display:'flex',alignItems:'center',justifyContent:'center',background:'#fafafa'}}>
+                  <img src="/pdf_icon.svg" alt="pdf" style={{height:48}} />
+                </div>}
+                actions={[
+                  <a href={pdf.url} download target="_blank" rel="noopener noreferrer">下载</a>,
+                  <a href={pdf.url} target="_blank" rel="noopener noreferrer">预览</a>
+                ]}
+              >
+                <div style={{ fontSize: 12, wordBreak: 'break-all', textAlign: 'center' }} title={pdf.filename}>
+                  <span style={{
+                    display: 'inline-block',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'bottom'
+                  }}>{pdf.filename}</span>
+                </div>
+              </Card>
             ))}
           </div>
         </div>

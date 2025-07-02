@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Card, Typography, List, Button, message, Divider, Modal, Form, Input, Alert, Tabs, Image } from "antd";
+import { Card, Typography, List, Button, message as antdMessage, Modal as AntdModal, Divider, Modal, Form, Input, Alert, Tabs, Image, App } from "antd";
 import { getMe, changePassword, sendChangePasswordCode } from "../../api/auth";
 import { getArticles, deleteArticle } from "../../api/article";
 import { useNavigate } from "react-router-dom";
-import { getUserMediaList } from "../../api/upload";
+import { getUserMediaList, deleteMedia } from "../../api/upload";
 
 const { Title, Text } = Typography;
 
@@ -19,6 +19,7 @@ const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
+  const { message, modal } = App.useApp();
 
   // 获取邮箱配置状态
   useEffect(() => {
@@ -150,6 +151,26 @@ const Profile: React.FC = () => {
     form.resetFields();
   };
 
+  // 新增：多媒体文件删除
+  const handleDeleteMedia = (id: number | string) => {
+    modal.confirm({
+      title: '确定要删除该多媒体文件吗？',
+      content: '删除后不可恢复',
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteMedia(id);
+          message.success('删除成功');
+          setMediaFiles(files => files.filter(f => f.id !== id));
+        } catch (e) {
+          message.error('删除失败');
+        }
+      }
+    });
+  };
+
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       <Card>
@@ -257,7 +278,17 @@ const Profile: React.FC = () => {
                         fallback="https://via.placeholder.com/100x100?text=加载失败"
                         alt={f.filename}
                       />
-                      <div style={{ fontSize: 12, wordBreak: 'break-all' }}>{f.filename}</div>
+                      <div style={{ fontSize: 12, wordBreak: 'break-all', textAlign: 'center' }} title={f.filename}>
+                        <span style={{
+                          display: 'inline-block',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'bottom'
+                        }}>{f.filename}</span>
+                      </div>
+                      <Button danger size="small" style={{ marginTop: 4 }} onClick={() => handleDeleteMedia(f.id)}>删除</Button>
                     </div>
                   ))}
                 </div>
@@ -272,7 +303,17 @@ const Profile: React.FC = () => {
                   {mediaFiles.filter(f => f.type === 'video').map(f => (
                     <div key={f.id} style={{ width: 180, textAlign: 'center' }}>
                       <video src={f.url} width={160} height={100} controls style={{ background: '#000' }} />
-                      <div style={{ fontSize: 12, wordBreak: 'break-all' }}>{f.filename}</div>
+                      <div style={{ fontSize: 12, wordBreak: 'break-all', textAlign: 'center' }} title={f.filename}>
+                        <span style={{
+                          display: 'inline-block',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'bottom'
+                        }}>{f.filename}</span>
+                      </div>
+                      <Button danger size="small" style={{ marginTop: 4 }} onClick={() => handleDeleteMedia(f.id)}>删除</Button>
                     </div>
                   ))}
                 </div>
@@ -286,7 +327,23 @@ const Profile: React.FC = () => {
                   {mediaFiles.filter(f => f.type === 'pdf').length === 0 && <span>暂无PDF</span>}
                   {mediaFiles.filter(f => f.type === 'pdf').map(f => (
                     <div key={f.id} style={{ width: 180, textAlign: 'center' }}>
-                      <a href={f.url} target="_blank" rel="noopener noreferrer">{f.filename}</a>
+                      <div style={{height:60,display:'flex',alignItems:'center',justifyContent:'center',background:'#fafafa',marginBottom:8}}>
+                        <img src="/pdf_icon.svg" alt="pdf" style={{height:40}} />
+                      </div>
+                      <div style={{ fontSize: 12, wordBreak: 'break-all', textAlign: 'center' }} title={f.filename}>
+                        <span style={{
+                          display: 'inline-block',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'bottom'
+                        }}>{f.filename}</span>
+                      </div>
+                      <div style={{ marginTop: 4 }}>
+                        <Button danger size="small" onClick={() => handleDeleteMedia(f.id)}>删除</Button>
+                        <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>预览</a>
+                      </div>
                     </div>
                   ))}
                 </div>

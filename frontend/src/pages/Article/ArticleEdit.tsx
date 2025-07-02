@@ -25,6 +25,7 @@ const ArticleEdit: React.FC = () => {
   const { message } = App.useApp();
   const [saveStatus, setSaveStatus] = useState<'published' | 'draft'>('draft');
   const [isDirty, setIsDirty] = useState(false);
+  const [articleStatus, setArticleStatus] = useState<'draft' | 'published' | undefined>(undefined);
 
   useEffect(() => {
     getTags().then((res: any) => {
@@ -66,6 +67,7 @@ const ArticleEdit: React.FC = () => {
         form.setFieldsValue({ ...data, tags: cleanTags });
         setContent(data.content || "");
         setArticleAuthorId(data.author?.id ?? null);
+        setArticleStatus(data.status);
         setLoading(false);
       });
     }
@@ -89,10 +91,8 @@ const ArticleEdit: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
 
-  const handleSave = async (status: 'published' | 'draft', silent = false) => {
+  const handleSave = (status: 'published' | 'draft') => {
     setSaveStatus(status);
-    form.submit();
-    if (!silent) setIsDirty(false);
   };
 
   // 权限校验：仅作者可编辑
@@ -128,6 +128,7 @@ const ArticleEdit: React.FC = () => {
       if (id && id !== 'new') {
         await updateArticle(id, { ...data });
         message.success(saveStatus === 'published' ? "文章发布成功" : "草稿已保存");
+        navigate(`/article/${id}`);
       } else {
         const res: any = await createArticle(data);
         message.success(saveStatus === 'published' ? "文章发布成功" : "草稿已保存");
@@ -250,15 +251,6 @@ const ArticleEdit: React.FC = () => {
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{id && id !== 'new' ? "编辑文章" : "发布新文章"}</span>
-            <Space>
-              <Button onClick={() => navigate(-1)}>返回</Button>
-              <Button type="primary" onClick={() => handleSave('published')} loading={loading}>
-                发布文章
-              </Button>
-              <Button  type="primary" onClick={() => handleSave('draft')} loading={loading}>
-                保存为草稿
-              </Button>
-            </Space>
           </div>
         }
         extra={
@@ -326,15 +318,61 @@ const ArticleEdit: React.FC = () => {
                 <Button size="large" onClick={() => navigate(-1)}>
                   取 消
                 </Button>
-                <Button 
-                  type="primary" 
-                  size="large" 
-                  htmlType="submit" 
-                  loading={loading}
-                  onClick={() => handleSave('published')}
-                >
-                  {id && id !== 'new' ? "保存修改" : "发布文章"}
-                </Button>
+                {(!id || id === 'new') && (
+                  <>
+                    <Button 
+                      type="primary" 
+                      size="large" 
+                      htmlType="submit" 
+                      loading={loading}
+                      onClick={() => handleSave('published')}
+                    >
+                      发布文章
+                    </Button>
+                    <Button 
+                      type="primary" 
+                      size="large" 
+                      htmlType="submit" 
+                      loading={loading}
+                      onClick={() => handleSave('draft')}
+                    >
+                      保存为草稿
+                    </Button>
+                  </>
+                )}
+                {id && id !== 'new' && articleStatus === 'draft' && (
+                  <>
+                    <Button 
+                      type="primary" 
+                      size="large" 
+                      htmlType="submit" 
+                      loading={loading}
+                      onClick={() => handleSave('published')}
+                    >
+                      发布文章
+                    </Button>
+                    <Button 
+                      type="primary" 
+                      size="large" 
+                      htmlType="submit" 
+                      loading={loading}
+                      onClick={() => handleSave('draft')}
+                    >
+                      保存修改
+                    </Button>
+                  </>
+                )}
+                {id && id !== 'new' && articleStatus === 'published' && (
+                  <Button 
+                    type="primary" 
+                    size="large" 
+                    htmlType="submit" 
+                    loading={loading}
+                    onClick={() => handleSave('published')}
+                  >
+                    保存修改
+                  </Button>
+                )}
               </Space>
             </div>
           </Form>

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # JWT Settings
     secret_key: str = "your-super-secret-key-change-this-in-production-123456789"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 1440  # 默认 1 天，可通过 .env 配置覆盖
     refresh_token_expire_days: int = 7
     
     # Redis Settings

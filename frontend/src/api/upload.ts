@@ -48,4 +48,8 @@ export const getAdminMediaList = async () => {
   if (!adminId) return [];
   const res = await getUserMediaList(adminId);
   return res.data || [];
+};
+
+export const deleteMedia = (id: number | string) => {
+  return request.delete(`/articles/media/${id}`);
 }; 

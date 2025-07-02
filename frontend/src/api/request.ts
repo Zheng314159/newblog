@@ -6,6 +6,31 @@ const request = axios.create({
   timeout: 10000,
 });
 
+let isRefreshing = false;
+let refreshPromise: Promise<any> | null = null;
+
+async function refreshToken() {
+  if (!refreshPromise) {
+    isRefreshing = true;
+    const refresh_token = TokenManager.getRefreshToken();
+    refreshPromise = axios.post("/api/v1/auth/refresh", { refresh_token })
+      .then(res => {
+        TokenManager.storeTokens(res.data);
+        return res.data.access_token;
+      })
+      .catch(err => {
+        TokenManager.clearTokens();
+        window.location.href = "/login";
+        throw err;
+      })
+      .finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 // 请求拦截器：自动加 token
 request.interceptors.request.use(
   (config) => {
@@ -30,15 +55,31 @@ request.interceptors.response.use(
   },
   async (error) => {
     const isSendCodeApi = error?.config?.url?.includes('/auth/send-change-password-code');
+    const originalRequest = error.config;
+    // 兼容后端 500 token 过期错误
+    const isTokenError = error.response?.status === 401 ||
+      (error.response?.status === 500 && (
+        typeof error.response?.data?.detail === 'string' &&
+        (error.response.data.detail.toLowerCase().includes('token') || error.response.data.detail.toLowerCase().includes('expired'))
+      ));
+    if (isTokenError && TokenManager.getRefreshToken() && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const newToken = await refreshToken();
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+        return request(originalRequest);
+      } catch (e) {
+        // 已在 refreshToken 里处理跳转
+        return Promise.reject(e);
+      }
+    }
     if (error.response?.status === 401) {
-      console.log("Authentication error detected");
       TokenManager.debugTokens();
       TokenManager.clearTokens();
       if (isSendCodeApi) {
-        // 只弹窗提示
         window.alert('登录状态已失效，请重新登录后再操作！');
       } else {
-        // 其他接口自动跳转
         window.location.href = "/login";
       }
     }

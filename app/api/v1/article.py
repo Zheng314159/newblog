@@ -33,8 +33,8 @@ UPLOAD_DIR = "uploads"
 IMAGES_DIR = os.path.join(UPLOAD_DIR, "images")
 ARTICLES_DIR = os.path.join(UPLOAD_DIR, "articles")
 LATEX_DIR = os.path.join(UPLOAD_DIR, "latex")
-VIDEOS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads', 'videos')
-PDFS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads', 'pdfs')
+VIDEOS_DIR = os.path.join(UPLOAD_DIR, "videos")
+PDFS_DIR = os.path.join(UPLOAD_DIR, "pdfs")
 
 # 确保上传目录存在
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -725,4 +725,35 @@ async def list_media_files(uploader_id: int = Query(None), db: Annotated[AsyncSe
             "uploader_role": f.uploader.role if f.uploader else None,
         })
     media_files.sort(key=lambda x: x["upload_time"], reverse=True)
-    return JSONResponse(content=media_files) 
+    return JSONResponse(content=media_files)
+
+
+@router.delete("/media/{media_id}", response_model=dict)
+async def delete_media_file(
+    media_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    media = await db.get(MediaFile, media_id)
+    if not media:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    # 权限校验（只允许本人或管理员删除）
+    if media.uploader_id != current_user.id and getattr(current_user, 'role', None) != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="无权限删除")
+    # 删除文件本体
+    try:
+        # 只删除本地文件，url 需转为本地路径
+        file_path = None
+        if media.type == MediaType.image:
+            file_path = os.path.join("uploads", "images", media.filename)
+        elif media.type == MediaType.video:
+            file_path = os.path.join("uploads", "videos", media.filename)
+        elif media.type == MediaType.pdf:
+            file_path = os.path.join("uploads", "pdfs", media.filename)
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        pass  # 可记录日志
+    await db.delete(media)
+    await db.commit()
+    return {"message": "删除成功"} 

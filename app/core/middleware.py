@@ -43,6 +43,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # 静态资源放行：图片和视频和多媒体列表
         if request.url.path.startswith("/api/v1/articles/images/") or \
            request.url.path.startswith("/api/v1/articles/videos/") or \
+           request.url.path.startswith("/api/v1/articles/pdfs/") or \
            request.url.path == "/api/v1/articles/media/list":
             logger.info(f"Static/media resource path, skipping auth: {request.url.path}")
             return await call_next(request)

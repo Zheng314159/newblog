@@ -77,7 +77,7 @@ const Media: React.FC = () => {
               style={{ width: 220 }}
               cover={
                 <div style={{height:120,display:'flex',alignItems:'center',justifyContent:'center',background:'#fafafa'}}>
-                  <img src="/pdf_icon.png" alt="pdf" style={{height:60}} />
+                  <img src="/pdf_icon.svg" alt="pdf" style={{height:60}} />
                 </div>
               }
               actions={[

@@ -7,6 +7,7 @@ import os
 import sys
 import subprocess
 from pathlib import Path
+import uvicorn
 
 def check_redis():
     """检查 Redis 是否运行"""
@@ -119,13 +120,12 @@ def main():
     
     # 启动应用
     try:
-        import uvicorn
         uvicorn.run(
-            "main:app",
+            "app.main:app",
             host="127.0.0.1",
             port=8000,
             reload=True,
-            log_level="info"
+            reload_dirs=["app"],
         )
     except KeyboardInterrupt:
         print("\n👋 应用已停止")
