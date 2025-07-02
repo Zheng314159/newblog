@@ -185,7 +185,7 @@ async def register(
         await redis_manager.delete(f"email_verification:{user_data.email}")
     
     # Create new user
-    hashed_password = get_password_hash(user_data.password)
+    hashed_password = get_password_hash(user_data.password or "")
     db_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -233,7 +233,7 @@ async def login(
     result = await db.execute(select(User).where(User.username == login_data.username))
     user = result.scalar_one_or_none()
     
-    if not user or not verify_password(login_data.password, user.hashed_password):
+    if not user or not verify_password(login_data.password or "", user.hashed_password or ""):
         raise AuthenticationError("Incorrect username or password")
     
     if not user.is_active:
@@ -373,14 +373,15 @@ async def change_password(
 ):
     """Change password for logged-in user"""
     # Get user from database
-    result = await db.execute(select(User).where(User.id == current_user.id))
+    user_id = current_user["user_id"] if isinstance(current_user, dict) else current_user.id
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     
     if not user:
         raise AuthenticationError("User not found")
     
     # Verify current password
-    if not verify_password(change_data.current_password, user.hashed_password):
+    if not verify_password(change_data.current_password or "", user.hashed_password or ""):
         raise AuthenticationError("Current password is incorrect")
     
     # Check if email verification is required
@@ -418,14 +419,15 @@ async def send_change_password_code(
     verification_code = generate_verification_code()
     
     # Store verification code in Redis (5 minutes expiry)
+    user_email = current_user["email"] if isinstance(current_user, dict) else current_user.email
     await redis_manager.set(
-        f"verification_code:{current_user.email}",
+        f"verification_code:{user_email}",
         verification_code,
         expire=5 * 60  # 5 minutes
     )
     
     # Send verification code email
-    add_verification_code_email_task(background_tasks, current_user.email, verification_code)
+    add_verification_code_email_task(background_tasks, user_email, verification_code)
     
     return {"message": "Verification code sent to your email", "email_enabled": True}
 
@@ -465,10 +467,15 @@ async def reset_password(
     return {"message": "Password successfully reset"}
 
 @router.get("/users")
-async def list_users(role: str = Query(None), db: Annotated[AsyncSession, Depends(get_db)] = None):
+async def list_users(db: Annotated[AsyncSession, Depends(get_db)], role: str = Query(None)):
     query = select(User)
     if role:
-        query = query.where(User.role == role)
+        from app.models.user import UserRole
+        try:
+            role_enum = UserRole(role)
+        except ValueError:
+            return []
+        query = query.where(getattr(User, "role") == role_enum.value)
     result = await db.execute(query)
     users = result.scalars().all()
     return [{"id": u.id, "username": u.username, "role": u.role} for u in users] 

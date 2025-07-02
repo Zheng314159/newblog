@@ -190,6 +190,8 @@ async def bind_oauth_account(
 ):
     """Bind OAuth account to existing user"""
     user_id = current_user.get("user_id")
+    if user_id is None:
+        raise AuthenticationError("User ID not found in current_user")
     
     # Get OAuth client
     oauth_client = getattr(oauth, provider.value, None)
@@ -241,6 +243,8 @@ async def unbind_oauth_account(
 ):
     """Unbind OAuth account from user"""
     user_id = current_user.get("user_id")
+    if user_id is None:
+        raise AuthenticationError("User ID not found in current_user")
     
     success = await OAuthService.unbind_oauth_account(
         db=db,
@@ -264,6 +268,8 @@ async def get_oauth_accounts(
 ):
     """Get user's OAuth accounts"""
     user_id = current_user.get("user_id")
+    if user_id is None:
+        raise AuthenticationError("User ID not found in current_user")
     
     accounts = await OAuthService.get_user_oauth_accounts(db=db, user_id=user_id)
     

@@ -186,10 +186,10 @@ class OAuthService:
             data={"sub": user.username, "user_id": user.id}
         )
         
-        # Store refresh token in Redis
+        # Store refresh token in Redis (multi-device support, same as normal login)
         await redis_manager.set(
-            f"refresh_token:{user.id}",
-            refresh_token,
+            f"refresh_token:{user.id}:{refresh_token}",
+            "valid",
             expire=7 * 24 * 60 * 60  # 7 days
         )
         
