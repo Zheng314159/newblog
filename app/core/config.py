@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     email_user: str = ""
     email_password: str = ""
     email_from: str = ""
+    notification_email: Optional[str] = Field(default=None, env="NOTIFICATION_EMAIL")
     email_enabled: bool = False
     
     # CORS Settings
@@ -68,6 +69,8 @@ class Settings(BaseSettings):
     scheduler_system_notification_cron: str = Field(default="5 * * * *", env="SCHEDULER_SYSTEM_NOTIFICATION_CRON")
     notification_websocket_enabled: bool = Field(default=True, env="NOTIFICATION_WEBSOCKET_ENABLED")
     notification_email_enabled: bool = Field(default=False, env="NOTIFICATION_EMAIL_ENABLED")
+    enable_notification_fetch: bool = Field(default=True, env="ENABLE_NOTIFICATION_FETCH")
+    enable_notification_push: bool = Field(default=True, env="ENABLE_NOTIFICATION_PUSH")
     
     class Config:
         env_file = ".env"

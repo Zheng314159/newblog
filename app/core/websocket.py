@@ -77,24 +77,25 @@ class ConnectionManager:
                 self.disconnect(user_id)
     
     async def broadcast_to_channel(self, message: dict, channel: str):
-        """向频道广播消息"""
+        """向频道广播消息，返回实际推送到的用户数"""
         if channel not in self.channel_subscriptions:
-            return
-        
+            return 0
         disconnected_users = []
+        sent_count = 0
         for user_id in self.channel_subscriptions[channel]:
             if user_id in self.active_connections:
                 try:
                     await self.active_connections[user_id].send_text(json.dumps(message))
+                    sent_count += 1
                 except Exception as e:
                     logger.error(f"Failed to send message to user {user_id} in channel {channel}: {e}")
                     disconnected_users.append(user_id)
             else:
                 disconnected_users.append(user_id)
-        
         # 清理断开的连接
         for user_id in disconnected_users:
             self.disconnect(user_id)
+        return sent_count
     
     async def broadcast_to_all(self, message: dict):
         """向所有连接广播消息"""

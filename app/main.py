@@ -251,6 +251,7 @@ async def lifespan(app: FastAPI):
 
     class SystemNotificationAdmin(ModelView, model=SystemNotification):
         column_list = ["id", "title", "message", "notification_type", "created_at", "is_sent", "admin_id"]
+        form_columns = ["title", "message", "notification_type", "is_sent", "admin_id"]
         can_create = True
         can_edit = True
         can_delete = True
@@ -258,7 +259,6 @@ async def lifespan(app: FastAPI):
         name = "系统通知"
         name_plural = "系统通知"
         form_include_pk = False
-        form_excluded_columns = ["created_at"]
 
         async def is_accessible(self, request):
             # 只有管理员能访问

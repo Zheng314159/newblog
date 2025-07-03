@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from app.core.config import settings, reload_settings
 from typing import Dict, Any, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_db
+from app.core.database import get_db, async_session
 from app.models.article import Article
 from app.models.user import User
 from app.models.media import MediaFile
 from sqlmodel import SQLModel
 from fastapi.responses import JSONResponse
+from app.models.system_notification import SystemNotification
+from sqlalchemy.future import select
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -66,6 +68,8 @@ async def get_config() -> Dict[str, Any]:
         "oauth_enabled": bool(settings.github_client_id or settings.google_client_id),
         "github_oauth_enabled": bool(settings.github_client_id and settings.github_client_secret),
         "google_oauth_enabled": bool(settings.google_client_id and settings.google_client_secret),
+        "enable_notification_fetch": settings.enable_notification_fetch,
+        "enable_notification_push": settings.enable_notification_push,
     }
 
 @router.get("/auth")
@@ -188,4 +192,16 @@ async def health_check():
 @router.get("/tables", summary="获取所有数据库表名")
 def get_all_tables():
     table_names = list(SQLModel.metadata.tables.keys())
-    return JSONResponse(content={"tables": table_names}) 
+    return JSONResponse(content={"tables": table_names})
+
+@router.get("/notifications")
+async def get_notifications(limit: int = Query(5, ge=1, le=20)):
+    async with async_session() as session:
+        result = await session.execute(
+            select(SystemNotification)
+            .where(SystemNotification.is_sent == True)
+            .order_by(SystemNotification.id.desc())
+            .limit(limit)
+        )
+        notifications = result.scalars().all()
+        return {"notifications": [n.dict() for n in notifications]} 

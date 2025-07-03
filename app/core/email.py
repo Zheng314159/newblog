@@ -310,6 +310,145 @@ class EmailService:
         
         return self.send_email(to_email, subject, body, html_body)
 
+    def send_statistics_email(self, to_email: str, statistics_data: dict) -> bool:
+        """发送业务统计数据邮件"""
+        subject = f"{settings.app_name} - 业务统计数据报告"
+        
+        # 格式化统计数据
+        total_users = statistics_data.get('total_users', 0)
+        active_users = statistics_data.get('active_users', 0)
+        total_articles = statistics_data.get('total_articles', 0)
+        published_articles = statistics_data.get('published_articles', 0)
+        total_comments = statistics_data.get('total_comments', 0)
+        approved_comments = statistics_data.get('approved_comments', 0)
+        total_tags = statistics_data.get('total_tags', 0)
+        today_users = statistics_data.get('today_users', 0)
+        today_articles = statistics_data.get('today_articles', 0)
+        today_comments = statistics_data.get('today_comments', 0)
+        updated_at = statistics_data.get('updated_at', '')
+        
+        body = f"""
+业务统计数据报告
+
+生成时间: {updated_at}
+
+总体统计:
+- 用户总数: {total_users}
+- 活跃用户: {active_users}
+- 文章总数: {total_articles}
+- 已发布文章: {published_articles}
+- 评论总数: {total_comments}
+- 已审核评论: {approved_comments}
+- 标签总数: {total_tags}
+
+今日新增:
+- 新增用户: {today_users}
+- 新增文章: {today_articles}
+- 新增评论: {today_comments}
+
+此报告由系统自动生成，如有疑问请联系管理员。
+
+祝好，
+{settings.app_name} 团队
+        """.strip()
+        
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>业务统计数据报告</title>
+    <style>
+        .stat-card {{
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }}
+        .stat-number {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }}
+        .stat-label {{
+            color: #666;
+            font-size: 14px;
+        }}
+        .section-title {{
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin: 20px 0 15px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div style="max-width: 700px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+        <h2 style="color: #333; text-align: center;">业务统计数据报告</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">生成时间: {updated_at}</p>
+        
+        <h3 class="section-title">总体统计</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div class="stat-card">
+                <div class="stat-number">{total_users}</div>
+                <div class="stat-label">用户总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{active_users}</div>
+                <div class="stat-label">活跃用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{total_articles}</div>
+                <div class="stat-label">文章总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{published_articles}</div>
+                <div class="stat-label">已发布文章</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{total_comments}</div>
+                <div class="stat-label">评论总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{approved_comments}</div>
+                <div class="stat-label">已审核评论</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{total_tags}</div>
+                <div class="stat-label">标签总数</div>
+            </div>
+        </div>
+        
+        <h3 class="section-title">今日新增</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div class="stat-card">
+                <div class="stat-number">{today_users}</div>
+                <div class="stat-label">新增用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{today_articles}</div>
+                <div class="stat-label">新增文章</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{today_comments}</div>
+                <div class="stat-label">新增评论</div>
+            </div>
+        </div>
+        
+        <hr style="margin: 30px 0;">
+        <p style="color: #666; font-size: 14px; text-align: center;">
+            此报告由系统自动生成，如有疑问请联系管理员。<br>
+            祝好，<br>
+            {settings.app_name} 团队
+        </p>
+    </div>
+</body>
+</html>
+        """.strip()
+        
+        return self.send_email(to_email, subject, body, html_body)
+
 
 # 创建全局邮件服务实例
 email_service = EmailService() 

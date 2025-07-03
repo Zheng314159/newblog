@@ -8,34 +8,28 @@ from app.models.user import UserRole
 
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 
+def admin_required(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    return current_user
 
 @router.get("/status")
 async def get_scheduler_status_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """获取定时任务状态（需要管理员权限）"""
-    if current_user.get("role") != UserRole.ADMIN.value:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要管理员权限"
-        )
-    
     return get_scheduler_status()
-
 
 @router.post("/start")
 async def start_scheduler_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """启动定时任务调度器（需要管理员权限）"""
-    if current_user.get("role") != UserRole.ADMIN.value:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要管理员权限"
-        )
-    
     try:
         await start_scheduler()
         return {"message": "定时任务调度器启动成功"}
@@ -45,19 +39,12 @@ async def start_scheduler_endpoint(
             detail=f"启动定时任务调度器失败: {str(e)}"
         )
 
-
 @router.post("/stop")
 async def stop_scheduler_endpoint(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """停止定时任务调度器（需要管理员权限）"""
-    if current_user.get("role") != UserRole.ADMIN.value:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要管理员权限"
-        )
-    
     try:
         await stop_scheduler()
         return {"message": "定时任务调度器停止成功"}
@@ -67,19 +54,12 @@ async def stop_scheduler_endpoint(
             detail=f"停止定时任务调度器失败: {str(e)}"
         )
 
-
 @router.get("/jobs")
 async def get_scheduler_jobs(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(admin_required),
     db: AsyncSession = Depends(get_db)
 ):
     """获取所有定时任务列表（需要管理员权限）"""
-    if current_user.get("role") != UserRole.ADMIN.value:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要管理员权限"
-        )
-    
     status_info = get_scheduler_status()
     return {
         "status": status_info["status"],

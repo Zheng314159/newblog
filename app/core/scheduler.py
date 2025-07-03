@@ -16,6 +16,7 @@ from app.models.tag import Tag
 from app.core.config import settings
 from app.core.websocket import manager
 from app.models.system_notification import SystemNotification
+from app.core.email import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class TaskScheduler:
         # 每小时执行一次：发送系统通知
         self.scheduler.add_job(
             self._send_system_notifications,
-            CronTrigger(minute=5),  # 每小时第5分钟执行
+            CronTrigger(minute='*'),  # 每小时第5分钟执行
             id='send_system_notifications',
             name='发送系统通知',
             replace_existing=True
@@ -94,12 +95,12 @@ class TaskScheduler:
             replace_existing=True
         )
         
-        # 每小时执行一次：模拟邮件发送
+        # 每天早晨5点执行：发送业务统计邮件
         self.scheduler.add_job(
-            self._simulate_email_sending,
-            CronTrigger(minute=15),  # 每小时第15分钟执行
-            id='simulate_email_sending',
-            name='模拟邮件发送',
+            self._send_statistics_email,
+            CronTrigger(hour=5, minute=0),  # 每天早晨5点执行
+            id='send_statistics_email',
+            name='发送业务统计邮件',
             replace_existing=True
         )
         
@@ -145,14 +146,14 @@ class TaskScheduler:
         """清理 Redis 中已过期的黑名单"""
         try:
             logger.info("开始清理 Redis 黑名单...")
-            
+            # 确保已连接
+            if not redis_manager.redis:
+                await redis_manager.connect()
             # 获取所有黑名单键
             blacklist_keys = await redis_manager.redis.keys("blacklist:*")
-            
             if not blacklist_keys:
                 logger.info("没有找到黑名单记录")
                 return
-            
             cleaned_count = 0
             for key in blacklist_keys:
                 # 检查是否过期
@@ -160,9 +161,7 @@ class TaskScheduler:
                 if ttl <= 0:
                     await redis_manager.redis.delete(key)
                     cleaned_count += 1
-            
             logger.info(f"Redis 黑名单清理完成，清理了 {cleaned_count} 个过期记录")
-            
         except Exception as e:
             logger.error(f"清理 Redis 黑名单失败: {e}")
     
@@ -172,16 +171,18 @@ class TaskScheduler:
             logger.info("开始发送系统通知...")
             # 模拟发送系统通知
             notifications = [
-                {
-                    "title": "系统维护通知",
-                    "message": "系统正常运行中，所有功能正常",
-                    "notification_type": "info"
-                },
-                {
-                    "title": "性能监控",
-                    "message": "系统性能良好，响应时间正常",
-                    "notification_type": "info"
-                }
+                # {
+                #     "id": "system_maintenance",
+                #     "title": "系统维护通知",
+                #     "message": "系统正常运行中，所有功能正常",
+                #     "notification_type": "info"
+                # },
+                # {
+                #     "id": "performance_monitor",
+                #     "title": "性能监控",
+                #     "message": "系统性能良好，响应时间正常",
+                #     "notification_type": "info"
+                # }
             ]
             # 推送到WebSocket首页频道
             for notification in notifications:
@@ -199,7 +200,117 @@ class TaskScheduler:
         """汇总统计"""
         try:
             logger.info("开始生成统计信息...")
-            
+            async with async_session() as session:
+                # 用户统计
+                user_count = await session.scalar(select(func.count(User.id)))
+                active_user_count = await session.scalar(
+                    select(func.count(User.id)).where(User.is_active == True)
+                )
+                # 文章统计
+                article_count = await session.scalar(select(func.count(Article.id)))
+                published_article_count = await session.scalar(
+                    select(func.count(Article.id)).where(Article.status == ArticleStatus.PUBLISHED)
+                )
+                # 评论统计
+                comment_count = await session.scalar(select(func.count(Comment.id)))
+                approved_comment_count = await session.scalar(
+                    select(func.count(Comment.id)).where(Comment.is_approved == True)
+                )
+                # 标签统计
+                tag_count = await session.scalar(select(func.count(Tag.id)))
+                # 今日新增统计
+                today = datetime.utcnow().date()
+                beijing_offset = 8  # 北京时间比UTC快8小时
+                user_count = await session.scalar(select(func.count(User.id)))
+                today_users = await session.scalar(
+                    select(func.count(User.id)).where(
+                        func.date(func.datetime(User.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
+                    )
+                )
+                article_count = await session.scalar(select(func.count(Article.id)))
+                today_articles = await session.scalar(
+                    select(func.count(Article.id)).where(
+                        func.date(func.datetime(Article.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
+                    )
+                )
+                comment_count = await session.scalar(select(func.count(Comment.id)))
+                today_comments = await session.scalar(
+                    select(func.count(Comment.id)).where(
+                        func.date(func.datetime(Comment.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
+                    )
+                )
+                # 保存统计结果到 Redis
+                stats = {
+                    "total_users": user_count,
+                    "active_users": active_user_count,
+                    "total_articles": article_count,
+                    "published_articles": published_article_count,
+                    "total_comments": comment_count,
+                    "approved_comments": approved_comment_count,
+                    "total_tags": tag_count,
+                    "today_users": today_users,
+                    "today_articles": today_articles,
+                    "today_comments": today_comments,
+                    "updated_at": datetime.now().isoformat()
+                }
+                if not redis_manager.redis:
+                    await redis_manager.connect()
+                await redis_manager.redis.hset("system:statistics", mapping=stats)
+                await redis_manager.redis.expire("system:statistics", 3600)  # 1小时过期
+                logger.info(f"统计信息生成完成: {stats}")
+        except Exception as e:
+            logger.error(f"生成统计信息失败: {e}")
+    
+    async def _send_statistics_email(self):
+        """发送业务统计邮件"""
+        try:
+            logger.info("定时任务触发：准备发送统计邮件")
+            # 检查邮件通知是否启用
+            if not settings.notification_email_enabled:
+                logger.info("邮件通知功能已禁用，跳过发送业务统计邮件")
+                return
+            # 检查邮件配置是否完整
+            if not all([settings.email_user, settings.email_password, settings.smtp_server]):
+                logger.warning("邮件配置不完整，跳过发送业务统计邮件")
+                return
+            # 获取最新的统计数据
+            stats = await self._get_latest_statistics()
+            if not stats:
+                logger.warning("无法获取统计数据，跳过发送邮件")
+                return
+            # 发送邮件到通知收件人
+            recipient_email = settings.notification_email
+            if not recipient_email:
+                logger.error("NOTIFICATION_EMAIL未配置，跳过发送统计邮件")
+                return
+            logger.info(f"准备发送统计邮件到: {recipient_email}")
+            success = email_service.send_statistics_email(recipient_email, stats)
+            if success:
+                logger.info(f"业务统计邮件发送成功: {recipient_email}")
+                # 记录发送日志
+                if not redis_manager.redis:
+                    await redis_manager.connect()
+                await redis_manager.redis.hset(
+                    "system:email_logs", 
+                    f"statistics_{datetime.now().strftime('%Y%m%d_%H%M')}",
+                    f"发送成功 - {recipient_email} - {datetime.now().isoformat()}"
+                )
+            else:
+                logger.error(f"业务统计邮件发送失败: {recipient_email}")
+                # 记录失败日志
+                if not redis_manager.redis:
+                    await redis_manager.connect()
+                await redis_manager.redis.hset(
+                    "system:email_logs", 
+                    f"statistics_{datetime.now().strftime('%Y%m%d_%H%M')}",
+                    f"发送失败 - {recipient_email} - {datetime.now().isoformat()}"
+                )
+        except Exception as e:
+            logger.error(f"发送业务统计邮件失败: {e}")
+    
+    async def _get_latest_statistics(self) -> Dict[str, Any]:
+        """获取最新的统计数据"""
+        try:
             async with async_session() as session:
                 # 用户统计
                 user_count = await session.scalar(select(func.count(User.id)))
@@ -223,25 +334,25 @@ class TaskScheduler:
                 tag_count = await session.scalar(select(func.count(Tag.id)))
                 
                 # 今日新增统计
-                today = datetime.now().date()
+                today = datetime.utcnow().date()
+                beijing_offset = 8  # 北京时间比UTC快8小时
                 today_users = await session.scalar(
                     select(func.count(User.id)).where(
-                        func.date(User.created_at) == today
+                        func.date(func.datetime(User.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
                     )
                 )
                 today_articles = await session.scalar(
                     select(func.count(Article.id)).where(
-                        func.date(Article.created_at) == today
+                        func.date(func.datetime(Article.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
                     )
                 )
                 today_comments = await session.scalar(
                     select(func.count(Comment.id)).where(
-                        func.date(Comment.created_at) == today
+                        func.date(func.datetime(Comment.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
                     )
                 )
                 
-                # 保存统计结果到 Redis
-                stats = {
+                return {
                     "total_users": user_count,
                     "active_users": active_user_count,
                     "total_articles": article_count,
@@ -255,50 +366,9 @@ class TaskScheduler:
                     "updated_at": datetime.now().isoformat()
                 }
                 
-                await redis_manager.redis.hset("system:statistics", mapping=stats)
-                await redis_manager.redis.expire("system:statistics", 3600)  # 1小时过期
-                
-                logger.info(f"统计信息生成完成: {stats}")
-                
         except Exception as e:
-            logger.error(f"生成统计信息失败: {e}")
-    
-    async def _simulate_email_sending(self):
-        """模拟邮件发送"""
-        try:
-            logger.info("开始模拟邮件发送...")
-            
-            # 模拟不同类型的邮件
-            email_tasks = [
-                {
-                    "type": "welcome",
-                    "recipient": "contemnewton@163.com",
-                    "subject": "欢迎加入我们的博客系统",
-                    "content": "感谢您注册我们的博客系统！"
-                },
-                {
-                    "type": "notification",
-                    "recipient": "contemnewton@163.com",
-                    "subject": "系统运行状态报告",
-                    "content": "系统运行正常，所有服务都在线。"
-                },
-                {
-                    "type": "digest",
-                    "recipient": "contemnewton@163.com",
-                    "subject": "今日热门文章摘要",
-                    "content": "查看今日最受欢迎的文章和评论。"
-                }
-            ]
-            
-            for email in email_tasks:
-                logger.info(f"模拟发送邮件: {email['type']} -> {email['recipient']}")
-                # 这里可以集成实际的邮件发送服务
-                await asyncio.sleep(0.1)  # 模拟发送延迟
-            
-            logger.info("邮件发送模拟完成")
-            
-        except Exception as e:
-            logger.error(f"模拟邮件发送失败: {e}")
+            logger.error(f"获取统计数据失败: {e}")
+            return None
     
     async def _daily_maintenance(self):
         """每日数据维护"""
@@ -417,6 +487,7 @@ class TaskScheduler:
                     select(SystemNotification).where(SystemNotification.is_sent == False)
                 )
                 notifications = result.scalars().all()
+                sent_ids = []
                 for n in notifications:
                     msg = {
                         "type": "system_notification",
@@ -427,11 +498,13 @@ class TaskScheduler:
                             "notification_type": n.notification_type
                         }
                     }
-                    await manager.broadcast_to_channel(msg, "home")
-                    n.is_sent = True
+                    sent_count = await manager.broadcast_to_channel(msg, "home")
+                    if sent_count > 0:
+                        n.is_sent = True
+                        sent_ids.append(n.id)
                 await session.commit()
-                if notifications:
-                    logger.info(f"推送了{len(notifications)}条系统通知")
+                if sent_ids:
+                    logger.info(f"推送并标记为已发送的系统通知: {sent_ids}")
         except Exception as e:
             logger.error(f"推送数据库系统通知失败: {e}")
     
@@ -439,18 +512,25 @@ class TaskScheduler:
         """推送实际业务统计到首页频道"""
         try:
             async with async_session() as session:
-                today = datetime.now().date()
+                today = datetime.utcnow().date()
+                beijing_offset = 8  # 北京时间比UTC快8小时
                 user_count = await session.scalar(select(func.count(User.id)))
                 today_users = await session.scalar(
-                    select(func.count(User.id)).where(func.date(User.created_at) == today)
+                    select(func.count(User.id)).where(
+                        func.date(func.datetime(User.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
+                    )
                 )
                 article_count = await session.scalar(select(func.count(Article.id)))
                 today_articles = await session.scalar(
-                    select(func.count(Article.id)).where(func.date(Article.created_at) == today)
+                    select(func.count(Article.id)).where(
+                        func.date(func.datetime(Article.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
+                    )
                 )
                 comment_count = await session.scalar(select(func.count(Comment.id)))
                 today_comments = await session.scalar(
-                    select(func.count(Comment.id)).where(func.date(Comment.created_at) == today)
+                    select(func.count(Comment.id)).where(
+                        func.date(func.datetime(Comment.created_at, f'+{beijing_offset} hours')) == (datetime.utcnow() + timedelta(hours=beijing_offset)).date()
+                    )
                 )
                 msg = {
                     "type": "task_status",

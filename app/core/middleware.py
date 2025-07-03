@@ -66,6 +66,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/v1/articles", "/api/v1/articles/",  # 允许匿名访问文章列表
             "/api/v1/tags/popular",  # 允许匿名访问热门标签
             "/api/v1/config/statistics",  # 允许匿名访问统计数据
+            "/api/v1/notifications",  # 允许匿名访问系统通知（修正路径）
             "/admin", "/admin/",  # 放行admin后台
             "/jianai", "/jianai/",  # 放行自定义后台路径
             ADMIN_PATH, ADMIN_PATH + "/",

@@ -96,6 +96,67 @@ async def test_background_tasks():
     print("=== 后台任务测试完成 ===")
 
 
+async def test_statistics_email():
+    """测试业务统计数据邮件发送"""
+    print("\n=== 测试业务统计数据邮件发送 ===")
+    if not email_service.enabled:
+        print("邮件功能已禁用，跳过发送测试")
+        return
+    if not all([email_service.smtp_server, email_service.email_user, email_service.email_password]):
+        print("邮件配置不完整，跳过发送测试")
+        return
+    # 自动读取收件人
+    from app.core.config import settings
+    test_email = settings.notification_email
+    if not test_email:
+        print("未配置NOTIFICATION_EMAIL，跳过发送测试")
+        return
+    # 尝试从redis读取统计数据
+    try:
+        from app.core.redis import redis_manager
+        if not redis_manager.redis:
+            import asyncio
+            asyncio.get_event_loop().run_until_complete(redis_manager.connect())
+        stats = asyncio.get_event_loop().run_until_complete(redis_manager.redis.hgetall("system:statistics"))
+        if not stats:
+            print("未找到统计数据，将使用模拟数据")
+            stats = {
+                "total_users": 10,
+                "active_users": 8,
+                "total_articles": 20,
+                "published_articles": 15,
+                "total_comments": 30,
+                "approved_comments": 25,
+                "total_tags": 5,
+                "today_users": 1,
+                "today_articles": 2,
+                "today_comments": 3,
+                "updated_at": "2024-07-03T12:00:00"
+            }
+    except Exception as e:
+        print(f"读取redis统计数据失败: {e}, 使用模拟数据")
+        stats = {
+            "total_users": 10,
+            "active_users": 8,
+            "total_articles": 20,
+            "published_articles": 15,
+            "total_comments": 30,
+            "approved_comments": 25,
+            "total_tags": 5,
+            "today_users": 1,
+            "today_articles": 2,
+            "today_comments": 3,
+            "updated_at": "2024-07-03T12:00:00"
+        }
+    print(f"发送到: {test_email}")
+    success = email_service.send_statistics_email(test_email, stats)
+    if success:
+        print("✓ 业务统计数据邮件发送成功")
+    else:
+        print("✗ 业务统计数据邮件发送失败")
+    print("=== 业务统计数据邮件测试完成 ===")
+
+
 def main():
     """主函数"""
     print("邮件功能测试工具")
@@ -104,6 +165,7 @@ def main():
     # 运行测试
     asyncio.run(test_email_service())
     asyncio.run(test_background_tasks())
+    asyncio.run(test_statistics_email())
 
 
 if __name__ == "__main__":

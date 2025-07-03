@@ -22,7 +22,7 @@ import {
 } from "@ant-design/icons";
 import { getArticles } from "../../api/article";
 import { getMediaList } from "../../api/upload";
-import { getStatistics } from "../../api/config";
+import { getStatistics, getConfig, getNotifications } from "../../api/config";
 import { useNavigate } from "react-router-dom";
 import { connectWebSocket, disconnectWebSocket } from "../../api/websocket";
 
@@ -43,6 +43,7 @@ const Home: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [taskStatus, setTaskStatus] = useState<any>(null);
+  const [enableNotificationFetch, setEnableNotificationFetch] = useState(false);
   const navigate = useNavigate();
 
   const carouselItems = [
@@ -72,7 +73,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     getArticles({ status: 'published' }).then((res) => {
-      const allArticles = res.items || res.data || [];
+      const allArticles = res.data || [];
       const adminArticles = allArticles.filter((item: any) => item.author?.role === 'ADMIN');
       setArticles(adminArticles);
       setLoading(false);
@@ -94,24 +95,127 @@ const Home: React.FC = () => {
         setStatsLoading(false);
       });
 
-    // WebSocket 实时通知
-    const token = localStorage.getItem("access_token");
-    const ws = connectWebSocket(token || undefined);
-    ws.onmessage = (event) => {
-      console.log('WS收到消息:', event.data);
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type && msg.type.includes("notification")) {
-          setNotifications((prev) => [msg, ...prev].slice(0, 5));
-        } else if (msg.type === "task_status") {
-          setTaskStatus(msg.data);
-        }
-      } catch (e) {}
-    };
+    let wsCleanup: (() => void) | undefined;
+
+    getConfig().then(cfg => {
+      const fetchEnabled = cfg && cfg.enable_notification_fetch;
+      const pushEnabled = cfg && cfg.enable_notification_push;
+      setEnableNotificationFetch(!!fetchEnabled);
+      // 只拉取历史
+      if (fetchEnabled && !pushEnabled) {
+        getNotifications(5)
+          .then(data => {
+            if (Array.isArray(data.notifications)) {
+              const normalized = data.notifications.map((n: any) => ({
+                type: 'system_notification',
+                data: n
+              }));
+              setNotifications(() => {
+                const map = new Map();
+                for (const n of normalized) {
+                  const key = (n.data?.id?.toString().trim()) || (n.id?.toString().trim()) || (n.data?.title && n.data?.message ? n.data.title.toString().trim() + '_' + n.data.message.toString().trim() : undefined);
+                  if (!key) continue;
+                  if (!map.has(key)) {
+                    map.set(key, n);
+                  }
+                }
+                return Array.from(map.values()).slice(0, 5);
+              });
+            }
+          });
+        return;
+      }
+      // 只推送
+      if (!fetchEnabled && pushEnabled) {
+        const token = localStorage.getItem("access_token");
+        const ws = connectWebSocket(token || undefined);
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type && msg.type.includes("notification")) {
+              setNotifications((prev) => {
+                const all = [msg, ...prev];
+                const map = new Map();
+                for (const n of all) {
+                  const key = (n.data?.id?.toString().trim()) || (n.id?.toString().trim()) || (n.data?.title && n.data?.message ? n.data.title.toString().trim() + '_' + n.data.message.toString().trim() : undefined);
+                  if (!key) continue;
+                  if (!map.has(key)) {
+                    map.set(key, n);
+                  }
+                }
+                return Array.from(map.values()).slice(0, 5);
+              });
+            } else if (msg.type === "task_status") {
+              setTaskStatus(msg.data);
+            }
+          } catch (e) {}
+        };
+        wsCleanup = () => { disconnectWebSocket(); };
+        return;
+      }
+      // 拉取+推送
+      if (fetchEnabled && pushEnabled) {
+        getNotifications(5)
+          .then(data => {
+            if (Array.isArray(data.notifications)) {
+              const normalized = data.notifications.map((n: any) => ({
+                type: 'system_notification',
+                data: n
+              }));
+              setNotifications((prev) => {
+                const all = [...normalized, ...prev];
+                const map = new Map();
+                for (const n of all) {
+                  const key = (n.data?.id?.toString().trim()) || (n.id?.toString().trim()) || (n.data?.title && n.data?.message ? n.data.title.toString().trim() + '_' + n.data.message.toString().trim() : undefined);
+                  if (!key) continue;
+                  if (!map.has(key)) {
+                    map.set(key, n);
+                  }
+                }
+                return Array.from(map.values()).slice(0, 5);
+              });
+            }
+          });
+        const token = localStorage.getItem("access_token");
+        const ws = connectWebSocket(token || undefined);
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type && msg.type.includes("notification")) {
+              setNotifications((prev) => {
+                const all = [msg, ...prev];
+                const map = new Map();
+                for (const n of all) {
+                  const key = (n.data?.id?.toString().trim()) || (n.id?.toString().trim()) || (n.data?.title && n.data?.message ? n.data.title.toString().trim() + '_' + n.data.message.toString().trim() : undefined);
+                  if (!key) continue;
+                  if (!map.has(key)) {
+                    map.set(key, n);
+                  }
+                }
+                return Array.from(map.values()).slice(0, 5);
+              });
+            } else if (msg.type === "task_status") {
+              setTaskStatus(msg.data);
+            }
+          } catch (e) {}
+        };
+        wsCleanup = () => { disconnectWebSocket(); };
+        return;
+      }
+    });
+    // useEffect cleanup: 组件卸载时断开WebSocket
     return () => {
-      disconnectWebSocket();
+      if (wsCleanup) wsCleanup();
     };
   }, []);
+
+  // 任务栏和通知栏 key debug
+  if (taskStatus && taskStatus.jobs) {
+    console.log('job keys:', taskStatus.jobs.map((job: any, idx: number) => job.id ? String(job.id) : String(job.name) + '-' + idx));
+  }
+  if (notifications) {
+    console.log('notify keys:', notifications.map((n, idx) => n.data?.id ? String(n.data.id) : (n.id ? String(n.id) : 'notify-' + idx)));
+  }
 
   const renderCarousel = () => (
     <Carousel autoplay style={{ marginBottom: 32 }}>
@@ -192,48 +296,8 @@ const Home: React.FC = () => {
 
   return (
     <App>
-      {/* 悬浮任务状态栏 */}
-      {taskStatus && (
-        <div
-          style={{
-            position: "fixed",
-            top: notifications.length > 0 ? 48 : 0,
-            left: 0,
-            width: "100%",
-            zIndex: 999,
-            background: "none", // 无背景色
-            color: "#2f54eb",
-            fontWeight: "bold",
-            fontSize: 15,
-            textAlign: "center",
-            padding: "8px 0",
-            borderBottom: "none",
-            boxShadow: "none",
-            overflow: "hidden",
-            whiteSpace: "nowrap"
-          }}
-        >
-          <div style={{
-            display: "inline-block",
-            whiteSpace: "nowrap",
-            animation: "marquee-task 18s linear infinite",
-            minWidth: "100%"
-          }}>
-            <span style={{ marginRight: 16 }}>定时任务：</span>
-            {taskStatus.jobs && taskStatus.jobs.length > 0 ? (
-              taskStatus.jobs.map((job: any, idx: number) => (
-                <span key={job.id || (job.name + idx)} style={{ margin: "0 12px" }}>
-                  {job.name}（下次: {job.next_run_time ? job.next_run_time.replace('T', ' ').slice(0, 19) : '无'}）
-                </span>
-              ))
-            ) : (
-              <span>暂无任务</span>
-            )}
-          </div>
-        </div>
-      )}
-      {/* 悬浮通知栏 */}
-      {notifications.length > 0 && (
+      {/* 只保留数据库驱动的系统通知栏，type为system_notification，无限滚动，右到左滚动动画 */}
+      {notifications.filter((n: any) => n.type === 'system_notification').length > 0 && (
         <div
           style={{
             position: "fixed",
@@ -241,12 +305,13 @@ const Home: React.FC = () => {
             left: 0,
             width: "100%",
             zIndex: 1000,
-            background: "none", // 无背景色
-            color: "#d46b08",      // 醒目橙色字体
+            background: "none",
+            color: "#d46b08",
             fontWeight: "bold",
             fontSize: 18,
             textAlign: "center",
             padding: "12px 0",
+            height: 48,
             boxShadow: "none",
             overflow: "hidden",
             whiteSpace: "nowrap"
@@ -258,25 +323,24 @@ const Home: React.FC = () => {
             animation: "marquee-notify 15s linear infinite",
             minWidth: "100%"
           }}>
-            {notifications.map((n, idx) => (
-              <span key={n.data?.id || n.id || (n.data?.title + n.data?.message + idx)} style={{ margin: "0 16px" }}>
+            {notifications.filter((n: any) => n.type === 'system_notification').map((n, idx) => (
+              <span key={
+                (n.data?.id?.toString().trim()) ||
+                (n.id?.toString().trim()) ||
+                (n.data?.title && n.data?.message ? n.data.title.toString().trim() + '_' + n.data.message.toString().trim() : 'notify-' + idx)
+              } style={{ margin: "0 16px" }}>
                 <b>{n.data?.title || n.type}</b>: {n.data?.message || n.data?.content}
               </span>
             ))}
           </div>
+          <style>{`
+            @keyframes marquee-notify {
+              0% { transform: translateX(100%); }
+              100% { transform: translateX(-100%); }
+            }
+          `}</style>
         </div>
       )}
-      {/* 滚动动画样式 */}
-      <style>{`
-        @keyframes marquee-notify {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        @keyframes marquee-task {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-      `}</style>
       <div>
         {renderCarousel()}
         {renderStatistics()}
