@@ -4,9 +4,9 @@ from typing import Dict, Any, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db, async_session
-from app.models.article import Article
+from app.models.article import Article, ArticleStatus
 from app.models.user import User
-from app.models.media import MediaFile
+from app.models.media import MediaFile, MediaType
 from sqlmodel import SQLModel
 from fastapi.responses import JSONResponse
 from app.models.system_notification import SystemNotification
@@ -141,7 +141,9 @@ async def get_statistics(
         total_articles = result.scalar() or 0
         
         # 获取已发布文章数
-        result = await db.execute(select(func.count(Article.id)).where(Article.status == 'published'))
+        result = await db.execute(
+            select(func.count(Article.id)).where(Article.status == "published")
+        )
         published_articles = result.scalar() or 0
         
         # 获取用户总数
@@ -150,10 +152,10 @@ async def get_statistics(
         
         # 获取活跃用户数（有发布文章的用户）
         result = await db.execute(
-            select(func.count(User.id.distinct()))
+            select(func.count(func.distinct(User.id)))
             .select_from(User)
             .join(Article, User.id == Article.author_id)
-            .where(Article.status == 'published')
+            .where(Article.status == "published")
         )
         active_users = result.scalar() or 0
         
@@ -163,13 +165,14 @@ async def get_statistics(
         
         # 按类型统计媒体文件
         result = await db.execute(
-            select(MediaFile.type, func.count(MediaFile.id))
-            .group_by(MediaFile.type)
+            select(MediaFile.type, func.count(MediaFile.id)).group_by(MediaFile.type)
         )
-        media_by_type = dict(result.all())
+        media_by_type = {str(row[0]): row[1] for row in result.all()}
         
         # 真实总浏览量：所有已发布文章的view_count之和
-        result = await db.execute(select(func.sum(Article.view_count)).where(Article.status == 'published'))
+        result = await db.execute(
+            select(func.sum(Article.view_count)).where(Article.status == "published")
+        )
         total_views = result.scalar() or 0
         
         return {
@@ -199,7 +202,7 @@ async def get_notifications(limit: int = Query(5, ge=1, le=20)):
     async with async_session() as session:
         result = await session.execute(
             select(SystemNotification)
-            .where(SystemNotification.is_sent == True)
+            .where(SystemNotification.is_sent.is_(True))
             .order_by(SystemNotification.id.desc())
             .limit(limit)
         )

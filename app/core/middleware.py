@@ -65,8 +65,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/v1/auth/refresh", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/send-verification-code",
             "/api/v1/articles", "/api/v1/articles/",  # 允许匿名访问文章列表
             "/api/v1/tags/popular",  # 允许匿名访问热门标签
+            "/api/v1/config", "/api/v1/config/",  # 允许匿名访问配置
             "/api/v1/config/statistics",  # 允许匿名访问统计数据
             "/api/v1/notifications",  # 允许匿名访问系统通知（修正路径）
+            "/api/v1/donation/config",  # 允许匿名访问捐赠配置
+            "/api/v1/donation/public-stats",  # 允许匿名访问公开统计
+            "/api/v1/donation/goals",  # 允许匿名访问捐赠目标
             "/admin", "/admin/",  # 放行admin后台
             "/jianai", "/jianai/",  # 放行自定义后台路径
             ADMIN_PATH, ADMIN_PATH + "/",
@@ -86,6 +90,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.url.path.startswith("/api/v1/search/") or
             request.url.path.startswith("/api/v1/oauth/") or
             request.url.path.startswith("/api/v1/config/") or  # 允许配置相关端点
+            request.url.path.startswith("/api/v1/donation/") or  # 允许捐赠相关端点
             (
                 request.url.path in ["/api/v1/articles", "/api/v1/articles/"] and request.method == "GET"
             ) or

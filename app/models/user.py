@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from .article import Article
     from .comment import Comment
     from .media import MediaFile
+    from .donation import DonationRecord
 
 
 class UserRole(str, Enum):
@@ -44,6 +45,7 @@ class User(UserBase, table=True):
     articles: List["Article"] = Relationship(back_populates="author")
     comments: List["Comment"] = Relationship(back_populates="author")
     media_files: List["MediaFile"] = Relationship(back_populates="uploader")
+    donations: List["DonationRecord"] = Relationship(back_populates="user")
 
 
 class UserCreate(UserBase):

@@ -22,6 +22,7 @@ const Navbar: React.FC = () => {
       <NavLink to="/" className="nav-item">首页</NavLink>
       <NavLink to="/media" className="nav-item">多媒体</NavLink>
       <NavLink to="/search" className="nav-item">搜索</NavLink>
+      <NavLink to="/donation" className="nav-item">捐赠</NavLink>
       {isAuthenticated && <NavLink to="/edit/new" className="nav-item">写文章</NavLink>}
       {isAuthenticated && <NavLink to="/profile" className="nav-item">我的</NavLink>}
       {!isAuthenticated ? (

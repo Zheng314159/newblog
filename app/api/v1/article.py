@@ -57,7 +57,7 @@ async def upload_image(
 ):
     """上传图片"""
     # 检查文件类型
-    if not file.content_type.startswith('image/'):
+    if not file.content_type or not file.content_type.startswith('image/'):
         raise HTTPException(
             status_code=400,
             detail="Only image files are allowed"
@@ -71,6 +71,9 @@ async def upload_image(
         )
     
     # 生成唯一文件名
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = get_file_path(unique_filename, IMAGES_DIR)
@@ -199,7 +202,7 @@ async def create_comment(
     await db.refresh(db_comment)
     
     # 发送评论通知邮件给文章作者
-    if article.author_id != current_user.id:
+    if article.author_id != current_user.id and article.author:
         add_comment_notification_task(
             background_tasks,
             article.author.email,
@@ -338,10 +341,12 @@ async def create_article(
         .where(Article.id == db_article.id)
     )
     article_with_relations = result.scalar_one()
+    
     # 组装 ArticleResponse 所需的 author/tags 字段
     from app.schemas.article import UserBasicInfo, TagInfo
     author_info = UserBasicInfo.model_validate(article_with_relations.author)
     tag_infos = [TagInfo.model_validate(at.tag) for at in article_with_relations.tags if at.tag is not None]
+    
     return ArticleResponse(
         id=article_with_relations.id,
         title=article_with_relations.title,
@@ -602,7 +607,7 @@ async def upload_video(
 ):
     """上传视频"""
     # 检查文件类型
-    if not file.content_type.startswith('video/'):
+    if not file.content_type or not file.content_type.startswith('video/'):
         raise HTTPException(
             status_code=400,
             detail="Only video files are allowed"
@@ -614,6 +619,9 @@ async def upload_video(
             detail="File size too large. Maximum 100MB allowed"
         )
     # 生成唯一文件名
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = os.path.join(VIDEOS_DIR, unique_filename)
@@ -666,8 +674,12 @@ async def upload_pdf(
     file: UploadFile = File(...)
 ):
     """上传 PDF 文档"""
-    if file.content_type != 'application/pdf':
+    if not file.content_type or file.content_type != 'application/pdf':
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
     file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_path = os.path.join(PDFS_DIR, unique_filename)

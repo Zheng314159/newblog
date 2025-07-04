@@ -37,6 +37,7 @@ from app.api.v1.search import router as search_router
 from app.api.v1.scheduler import router as scheduler_router
 from app.api.v1.oauth import router as oauth_router
 from app.api.v1.config import router as config_router
+from app.api.v1.donation import router as donation_router
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.responses import RedirectResponse
@@ -49,6 +50,7 @@ from app.core.security import verify_password
 from app.models.user import UserRole
 from app.models.media import MediaFile
 from app.models.system_notification import SystemNotification
+from app.models.donation import DonationConfig, DonationRecord, DonationGoal
 
 ADMIN_PATH = "/admin"  # 后台路径恢复为/admin，保证SQLAdmin静态资源和JS事件正常
 
@@ -87,7 +89,7 @@ async def lifespan(app: FastAPI):
 
     class UserAdmin(ModelView, model=User):
         column_list = ["id", "username", "email", "role", "is_active", "created_at"]
-        form_excluded_columns = ["hashed_password"]
+        form_columns = ["username", "email", "full_name", "role", "is_active", "oauth_provider", "oauth_id", "oauth_username", "avatar_url"]
         can_create = True
         can_edit = True
         can_delete = True
@@ -142,6 +144,7 @@ async def lifespan(app: FastAPI):
 
     class ArticleAdmin(ModelView, model=Article):
         column_list = ["id", "title", "author_id", "status", "view_count", "created_at"]
+        form_columns = ["title", "content", "summary", "status", "author_id", "is_featured", "has_latex", "latex_content", "view_count"]
         can_create = True
         can_edit = True
         can_delete = True
@@ -149,7 +152,6 @@ async def lifespan(app: FastAPI):
         name = "文章管理"
         name_plural = "文章"
         form_include_pk = False
-        form_excluded_columns = ["created_at", "updated_at", "published_at"]
         
         async def delete_model(self, request: Request, pks: list) -> bool:
             print(f"delete_model called: {pks}")
@@ -176,6 +178,7 @@ async def lifespan(app: FastAPI):
 
     class TagAdmin(ModelView, model=Tag):
         column_list = ["id", "name", "description", "created_at"]
+        form_columns = ["name", "description"]
         can_create = True
         can_edit = True
         can_delete = True
@@ -183,7 +186,6 @@ async def lifespan(app: FastAPI):
         name = "标签管理"
         name_plural = "标签"
         form_include_pk = False
-        form_excluded_columns = ["created_at"]
 
     class ArticleTagAdmin(ModelView, model=ArticleTag):
         column_list = ["id", "article_id", "tag_id"]
@@ -198,6 +200,7 @@ async def lifespan(app: FastAPI):
 
     class CommentAdmin(ModelView, model=Comment):
         column_list = ["id", "article_id", "author_id", "content", "created_at", "is_approved"]
+        form_columns = ["article_id", "author_id", "content", "parent_id", "is_approved"]
         can_create = True
         can_edit = True
         can_delete = True
@@ -205,7 +208,6 @@ async def lifespan(app: FastAPI):
         name = "评论管理"
         name_plural = "评论"
         form_include_pk = False
-        form_excluded_columns = ["created_at", "updated_at"]
         
         async def delete_model(self, request: Request, pks: list) -> bool:
             print(f"delete_model called: {pks}")
@@ -240,6 +242,7 @@ async def lifespan(app: FastAPI):
 
     class OAuthAccountAdmin(ModelView, model=OAuthAccount):
         column_list = ["id", "user_id", "provider", "provider_user_id", "provider_username", "created_at", "updated_at"]
+        form_columns = ["user_id", "provider", "provider_user_id", "provider_username", "provider_email", "provider_avatar_url"]
         can_create = False
         can_edit = False
         can_delete = True
@@ -247,7 +250,6 @@ async def lifespan(app: FastAPI):
         name = "OAuth账号绑定"
         name_plural = "OAuth账号绑定"
         form_include_pk = False
-        form_excluded_columns = ["access_token", "refresh_token"]
 
     class SystemNotificationAdmin(ModelView, model=SystemNotification):
         column_list = ["id", "title", "message", "notification_type", "created_at", "is_sent", "admin_id"]
@@ -276,6 +278,39 @@ async def lifespan(app: FastAPI):
                 data["admin_id"] = user_id
             return await super().insert_model(request, data)
 
+    class DonationConfigAdmin(ModelView, model=DonationConfig):
+        column_list = ["id", "is_enabled", "title", "alipay_enabled", "wechat_enabled", "paypal_enabled", "total_donations", "total_amount"]
+        form_columns = ["is_enabled", "title", "alipay_enabled", "wechat_enabled", "paypal_enabled"]
+        can_create = True
+        can_edit = True
+        can_delete = False
+        can_view_details = True
+        name = "捐赠配置"
+        name_plural = "捐赠配置"
+        form_include_pk = False
+
+    class DonationRecordAdmin(ModelView, model=DonationRecord):
+        column_list = ["id", "donor_name", "amount", "currency", "payment_method", "payment_status", "created_at"]
+        form_columns = ["donor_name", "amount", "currency", "payment_method", "payment_status", "message"]
+        can_create = False
+        can_edit = True
+        can_delete = True
+        can_view_details = True
+        name = "捐赠记录"
+        name_plural = "捐赠记录"
+        form_include_pk = False
+
+    class DonationGoalAdmin(ModelView, model=DonationGoal):
+        column_list = ["id", "title", "target_amount", "current_amount", "currency", "is_active", "is_completed"]
+        form_columns = ["title", "target_amount", "current_amount", "currency", "is_active", "description"]
+        can_create = True
+        can_edit = True
+        can_delete = True
+        can_view_details = True
+        name = "捐赠目标"
+        name_plural = "捐赠目标"
+        form_include_pk = False
+
     admin.add_view(UserAdmin)
     admin.add_view(OAuthAccountAdmin)
     admin.add_view(ArticleAdmin)
@@ -284,6 +319,9 @@ async def lifespan(app: FastAPI):
     admin.add_view(CommentAdmin)
     admin.add_view(MediaFileAdmin)
     admin.add_view(SystemNotificationAdmin)
+    admin.add_view(DonationConfigAdmin)
+    admin.add_view(DonationRecordAdmin)
+    admin.add_view(DonationGoalAdmin)
     
     yield
     
@@ -377,6 +415,7 @@ app.include_router(search_router, prefix="/api/v1")
 app.include_router(scheduler_router, prefix="/api/v1")
 app.include_router(oauth_router, prefix="/api/v1")
 app.include_router(config_router, prefix="/api/v1")
+app.include_router(donation_router, prefix="/api/v1")
 
 
 @app.get("/")

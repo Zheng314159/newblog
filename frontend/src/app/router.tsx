@@ -20,6 +20,7 @@ const LaTeXTest = lazy(() => import("../pages/Test/LaTeXTest"));
 const CommentTest = lazy(() => import("../pages/Test/CommentTest"));
 const OAuthTest = lazy(() => import("../pages/Test/OAuthTest"));
 const ConfigTest = lazy(() => import("../pages/Test/ConfigTest"));
+const DonationPage = lazy(() => import("../pages/Donation/DonationPage"));
 const NotFound = lazy(() => import("../pages/NotFound"));
 
 const AppRouter: React.FC = () => (
@@ -43,6 +44,7 @@ const AppRouter: React.FC = () => (
         <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth role="ADMIN"><Admin /></RequireAuth>} />
         <Route path="/media" element={<Media />} />
+        <Route path="/donation" element={<DonationPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
