@@ -29,6 +29,7 @@ import {
   getPublicDonationStats,
   DonationGoal,
 } from '../../api/donation';
+import confetti from 'canvas-confetti';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -42,6 +43,14 @@ const DonationPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    // 只要有目标完成就庆祝
+    if (goals.some(g => g.is_completed && !g._celebrated)) {
+      confetti();
+      setGoals(goals.map(g => g.is_completed ? { ...g, _celebrated: true } : g));
+    }
+  }, [goals]);
 
   const loadData = async () => {
     setLoading(true);
@@ -62,8 +71,9 @@ const DonationPage: React.FC = () => {
 
   const handleDonationSuccess = (donation: any) => {
     setShowDonationModal(false);
-    message.success('感谢您的捐赠！');
-    // 重新加载数据
+    if (donation.payment_status === 'SUCCESS') {
+      message.success('感谢您的捐赠！');
+    }
     loadData();
   };
 
@@ -123,14 +133,13 @@ const DonationPage: React.FC = () => {
           </div>
 
           <Row gutter={[24, 24]}>
-            {/* 左侧：捐赠表单 */}
-            <Col xs={24} lg={14}>
+            {/* 立即捐赠表单 */}
+            <Col xs={24}>
               <Card>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                   <Title level={3}>立即捐赠</Title>
                   <Text type="secondary">选择金额和支付方式，支持我们继续创作</Text>
                 </div>
-                
                 <Button
                   type="primary"
                   size="large"
@@ -141,9 +150,10 @@ const DonationPage: React.FC = () => {
                   开始捐赠
                 </Button>
               </Card>
-
-              {/* 捐赠目标 */}
-              {goals.length > 0 && (
+            </Col>
+            {/* 捐赠目标 */}
+            {goals.length > 0 && (
+              <Col xs={24}>
                 <Card title="捐赠目标" style={{ marginTop: '24px' }}>
                   <List
                     dataSource={goals}
@@ -163,6 +173,7 @@ const DonationPage: React.FC = () => {
                             percent={goal.progress_percentage}
                             size="small"
                             status={goal.is_completed ? 'success' : 'active'}
+                            strokeColor={goal.is_completed ? '#52c41a' : undefined}
                           />
                           <div style={{ marginTop: '8px' }}>
                             <Tag color={goal.is_completed ? 'green' : 'blue'}>
@@ -174,12 +185,10 @@ const DonationPage: React.FC = () => {
                     )}
                   />
                 </Card>
-              )}
-            </Col>
-
-            {/* 右侧：统计信息 */}
-            <Col xs={24} lg={10}>
-              {/* 总体统计 */}
+              </Col>
+            )}
+            {/* 捐赠统计 */}
+            <Col xs={24}>
               <Card title="捐赠统计">
                 <Row gutter={[16, 16]}>
                   <Col span={12}>
@@ -213,9 +222,10 @@ const DonationPage: React.FC = () => {
                   </Col>
                 </Row>
               </Card>
-
-              {/* 捐赠说明 */}
-              <Card title="捐赠说明" style={{ marginTop: '24px' }}>
+            </Col>
+            {/* 捐赠说明 */}
+            <Col xs={24}>
+              <Card title="捐赠说明">
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <div>
                     <Text strong>支持方式：</Text>
@@ -224,9 +234,7 @@ const DonationPage: React.FC = () => {
                       我们支持支付宝、微信支付、PayPal等多种支付方式，您可以选择最适合的方式进行捐赠。
                     </Text>
                   </div>
-                  
                   <Divider />
-                  
                   <div>
                     <Text strong>捐赠用途：</Text>
                     <br />
@@ -234,9 +242,7 @@ const DonationPage: React.FC = () => {
                       您的捐赠将用于服务器维护、功能开发、内容创作等方面，帮助我们提供更好的服务。
                     </Text>
                   </div>
-                  
                   <Divider />
-                  
                   <div>
                     <Text strong>隐私保护：</Text>
                     <br />
@@ -246,9 +252,10 @@ const DonationPage: React.FC = () => {
                   </div>
                 </Space>
               </Card>
-
-              {/* 联系方式 */}
-              <Card title="联系我们" style={{ marginTop: '24px' }}>
+            </Col>
+            {/* 联系我们 */}
+            <Col xs={24}>
+              <Card title="联系我们">
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <div>
                     <Text strong>邮箱：</Text>

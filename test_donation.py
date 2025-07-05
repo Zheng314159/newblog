@@ -94,7 +94,6 @@ async def test_donation():
             is_anonymous=False,
             amount=Decimal('50.00'),
             currency="CNY",
-            donation_type="ONE_TIME",
             payment_method="ALIPAY",
             payment_status="SUCCESS",
             transaction_id="TEST_123456",

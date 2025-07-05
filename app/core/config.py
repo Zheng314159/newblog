@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     email_user: str = ""
     email_password: str = ""
     email_from: str = ""
-    notification_email: Optional[str] = Field(default=None, env="NOTIFICATION_EMAIL")
+    notification_email: Optional[str] = Field(default=None, alias="NOTIFICATION_EMAIL")
     email_enabled: bool = False
     
     # CORS Settings
@@ -63,14 +63,73 @@ class Settings(BaseSettings):
     no_proxy: Optional[str] = None
     
     # Scheduler/Notification dynamic config
-    scheduler_cleanup_redis_enabled: bool = Field(default=True, env="SCHEDULER_CLEANUP_REDIS_ENABLED")
-    scheduler_cleanup_redis_cron: str = Field(default="0 * * * *", env="SCHEDULER_CLEANUP_REDIS_CRON")
-    scheduler_system_notification_enabled: bool = Field(default=True, env="SCHEDULER_SYSTEM_NOTIFICATION_ENABLED")
-    scheduler_system_notification_cron: str = Field(default="5 * * * *", env="SCHEDULER_SYSTEM_NOTIFICATION_CRON")
-    notification_websocket_enabled: bool = Field(default=True, env="NOTIFICATION_WEBSOCKET_ENABLED")
-    notification_email_enabled: bool = Field(default=False, env="NOTIFICATION_EMAIL_ENABLED")
-    enable_notification_fetch: bool = Field(default=True, env="ENABLE_NOTIFICATION_FETCH")
-    enable_notification_push: bool = Field(default=True, env="ENABLE_NOTIFICATION_PUSH")
+    scheduler_cleanup_redis_enabled: bool = Field(default=True, alias="SCHEDULER_CLEANUP_REDIS_ENABLED")
+    scheduler_cleanup_redis_cron: str = Field(default="0 * * * *", alias="SCHEDULER_CLEANUP_REDIS_CRON")
+    scheduler_system_notification_enabled: bool = Field(default=True, alias="SCHEDULER_SYSTEM_NOTIFICATION_ENABLED")
+    scheduler_system_notification_cron: str = Field(default="5 * * * *", alias="SCHEDULER_SYSTEM_NOTIFICATION_CRON")
+    notification_websocket_enabled: bool = Field(default=True, alias="NOTIFICATION_WEBSOCKET_ENABLED")
+    notification_email_enabled: bool = Field(default=False, alias="NOTIFICATION_EMAIL_ENABLED")
+    enable_notification_fetch: bool = Field(default=True, alias="ENABLE_NOTIFICATION_FETCH")
+    enable_notification_push: bool = Field(default=True, alias="ENABLE_NOTIFICATION_PUSH")
+    
+    # 支付宝配置
+    alipay_app_id: str = Field(default="", alias="ALIPAY_APP_ID")
+    alipay_app_private_key_path: str = Field(default="keys/app_private_key.pem", alias="ALIPAY_APP_PRIVATE_KEY_PATH")
+    alipay_public_key_path: str = Field(default="keys/alipay_public_key.pem", alias="ALIPAY_PUBLIC_KEY_PATH")
+    alipay_notify_url: str = Field(default="", alias="ALIPAY_NOTIFY_URL")
+    alipay_return_url: str = Field(default="", alias="ALIPAY_RETURN_URL")
+    alipay_gateway: str = Field(default="", alias="ALIPAY_GATEWAY")
+    alipay_qr_base: str = Field(default="", alias="ALIPAY_QR_BASE")
+    # 微信支付V3配置
+    wechat_appid: str = Field(default="", alias="WECHAT_APPID")
+    wechat_mchid: str = Field(default="", alias="WECHAT_MCHID")
+    wechat_api_v3_key: str = Field(default="", alias="WECHAT_API_V3_KEY")
+    wechat_private_key_path: str = Field(default="", alias="WECHAT_PRIVATE_KEY_PATH")
+    wechat_cert_serial_no: str = Field(default="", alias="WECHAT_CERT_SERIAL_NO")
+    wechat_notify_url: str = Field(default="", alias="WECHAT_NOTIFY_URL")
+    wechat_platform_cert_path: str = Field(default="", alias="WECHAT_PLATFORM_CERT_PATH")
+    wechat_pay_type: str = Field(default="native", alias="WECHAT_PAY_TYPE")
+    wechat_qr_base: str = Field(default="", alias="WECHAT_QR_BASE")
+    # PayPal配置
+    paypal_client_id: str = Field(default="", alias="PAYPAL_CLIENT_ID")
+    paypal_client_secret: str = Field(default="", alias="PAYPAL_CLIENT_SECRET")
+    paypal_api_base: str = Field(default="https://api-m.sandbox.paypal.com", alias="PAYPAL_API_BASE")
+    paypal_return_url: str = Field(default="", alias="PAYPAL_RETURN_URL")
+    paypal_cancel_url: str = Field(default="", alias="PAYPAL_CANCEL_URL")
+    paypal_currency: str = Field(default="USD", alias="PAYPAL_CURRENCY")
+    paypal_qr_base: str = Field(default="", alias="PAYPAL_QR_BASE")
+    
+    @property
+    def alipay_private_key(self):
+        """读取支付宝私钥内容"""
+        if self.alipay_app_private_key_path and os.path.exists(self.alipay_app_private_key_path):
+            with open(self.alipay_app_private_key_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
+
+    @property
+    def alipay_public_key(self):
+        """读取支付宝公钥内容"""
+        if self.alipay_public_key_path and os.path.exists(self.alipay_public_key_path):
+            with open(self.alipay_public_key_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
+    
+    @property
+    def wechat_private_key(self):
+        """读取微信支付私钥内容"""
+        if self.wechat_private_key_path and os.path.exists(self.wechat_private_key_path):
+            with open(self.wechat_private_key_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
+    
+    @property
+    def wechat_platform_cert(self):
+        """读取微信支付平台证书内容"""
+        if self.wechat_platform_cert_path and os.path.exists(self.wechat_platform_cert_path):
+            with open(self.wechat_platform_cert_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
     
     class Config:
         env_file = ".env"

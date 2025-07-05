@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Form,
   Input,
@@ -14,11 +14,13 @@ import {
   Row,
   Col,
   App,
+  Select,
 } from 'antd';
 import { HeartOutlined, UserOutlined, MessageOutlined } from '@ant-design/icons';
-import { createDonation, getDonationConfig, DonationConfig } from '../../api/donation';
+import { createDonation, getDonationConfig, DonationConfig, getDonationGoals, getPaymentMethods, DonationGoal } from '../../api/donation';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../app/store';
+import PaymentDetailModal from './PaymentDetailModal';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -33,13 +35,50 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<DonationConfig | null>(null);
   const [customAmount, setCustomAmount] = useState<number | null>(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<any>(null);
+  const [donationInfo, setDonationInfo] = useState<any>(null);
+  const [alipayFormHtml, setAlipayFormHtml] = useState<string | null>(null);
+  const [goals, setGoals] = useState<DonationGoal[]>([]);
+  const [selectedGoal, setSelectedGoal] = useState<number | null>(null);
+  const [methods, setMethods] = useState<{type: string, name: string}[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<string | undefined>(undefined);
   
   const user = useSelector((state: RootState) => state.user.userInfo);
   const { message } = App.useApp();
 
+  const alipayFormContainerRef = useRef<HTMLDivElement>(null);
+
+  const paymentTypeMap: Record<string, string> = {
+    alipay: 'ALIPAY',
+    wechatpayv3: 'WECHAT',
+    paypal: 'PAYPAL',
+  };
+
   useEffect(() => {
     loadConfig();
+    getDonationGoals(true).then(res => {
+      setGoals(res.data);
+      if (res.data.length > 0) setSelectedGoal(res.data[0].id);
+    });
+    getPaymentMethods().then(res => {
+      const methods = res.data?.methods || [];
+      setMethods(methods);
+      if (methods.length > 0) {
+        setPaymentMethod(methods[0].type);
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    if (alipayFormHtml && alipayFormContainerRef.current) {
+      // 提交表单
+      const form = alipayFormContainerRef.current.querySelector('form#alipaysubmit') as HTMLFormElement;
+      if (form) {
+        form.submit();
+      }
+    }
+  }, [alipayFormHtml]);
 
   const loadConfig = async () => {
     try {
@@ -49,7 +88,7 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
       // 如果有用户信息，自动填充姓名
       if (user) {
         form.setFieldsValue({
-          donor_name: user.full_name || user.username,
+          donor_name: user.username,
           donor_email: user.email,
         });
       }
@@ -63,7 +102,9 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
       message.error('捐赠功能未启用');
       return;
     }
-
+    if (!values.payment_method && config.alipay_enabled) {
+      values.payment_method = 'ALIPAY';
+    }
     setLoading(true);
     try {
       const response = await createDonation({
@@ -71,11 +112,27 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
         amount: values.amount || customAmount || 0,
         currency: 'CNY',
       });
-
-      message.success('捐赠记录创建成功！');
-      onSuccess?.(response.data);
-      
-      // 重置表单
+      // 如果是支付宝网页支付，直接渲染 form 跳转，关闭外层 Modal
+      if (response.data.alipay_form_html) {
+        setAlipayFormHtml(response.data.alipay_form_html);
+        onSuccess?.(response.data); // 关闭外层 Modal
+        setPaymentInfo(null);
+        setDonationInfo(null);
+        setPaymentModalVisible(false);
+        message.success('正在跳转支付宝支付...');
+        form.resetFields();
+        setCustomAmount(null);
+        return;
+      }
+      // 其它方式弹出支付详情弹窗
+      setPaymentInfo(response.data);
+      setDonationInfo({
+        amount: values.amount || customAmount || 0,
+        order_no: response.data.id,
+        payment_method: values.payment_method,
+      });
+      setPaymentModalVisible(true);
+      message.success('捐赠记录创建成功，请完成支付！');
       form.resetFields();
       setCustomAmount(null);
     } catch (error: any) {
@@ -94,8 +151,6 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
       ALIPAY: '支付宝',
       WECHAT: '微信支付',
       PAYPAL: 'PayPal',
-      BANK_TRANSFER: '银行转账',
-      CRYPTO: '加密货币',
     };
     return labels[method as keyof typeof labels] || method;
   };
@@ -125,6 +180,14 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
     );
   }
 
+  if (alipayFormHtml) {
+    // 去除 <script>，只渲染 form
+    const htmlWithoutScript = alipayFormHtml.replace(/<script[\s\S]*?<\/script>/gi, '');
+    return (
+      <div ref={alipayFormContainerRef} dangerouslySetInnerHTML={{ __html: htmlWithoutScript }} />
+    );
+  }
+
   return (
     <Card>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -138,8 +201,7 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          donation_type: 'ONE_TIME',
-          is_anonymous: false,
+          payment_method: config.alipay_enabled ? 'ALIPAY' : undefined,
         }}
       >
         {/* 捐赠者信息 */}
@@ -202,7 +264,16 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
                 </Col>
               ))}
             </Row>
-            
+            {/* 目标选择下拉框 */}
+            {goals.length > 0 && (
+              <Form.Item label="捐赠目标" name="goal_id" rules={[{ required: true, message: '请选择捐赠目标' }]} initialValue={goals[0]?.id?.toString()}>
+                <Select style={{ width: '100%' }}>
+                  {goals.map(goal => (
+                    <Select.Option value={goal.id.toString()} key={goal.id.toString()}>{goal.title}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            )}
             <Form.Item name="amount" noStyle>
               <InputNumber
                 placeholder="或输入自定义金额"
@@ -219,47 +290,19 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
 
         <Divider />
 
-        {/* 捐赠类型 */}
-        <Form.Item
-          label="捐赠类型"
-          name="donation_type"
-          rules={[{ required: true, message: '请选择捐赠类型' }]}
-        >
-          <Radio.Group>
-            <Space direction="vertical">
-              <Radio value="ONE_TIME">{getDonationTypeLabel('ONE_TIME')}</Radio>
-              <Radio value="MONTHLY">{getDonationTypeLabel('MONTHLY')}</Radio>
-              <Radio value="YEARLY">{getDonationTypeLabel('YEARLY')}</Radio>
-            </Space>
-          </Radio.Group>
-        </Form.Item>
-
-        <Divider />
-
         {/* 支付方式 */}
         <Form.Item
           label="支付方式"
           name="payment_method"
           rules={[{ required: true, message: '请选择支付方式' }]}
         >
-          <Radio.Group>
-            <Space direction="vertical">
-              {config.alipay_enabled && (
-                <Radio value="ALIPAY">{getPaymentMethodLabel('ALIPAY')}</Radio>
-              )}
-              {config.wechat_enabled && (
-                <Radio value="WECHAT">{getPaymentMethodLabel('WECHAT')}</Radio>
-              )}
-              {config.paypal_enabled && (
-                <Radio value="PAYPAL">{getPaymentMethodLabel('PAYPAL')}</Radio>
-              )}
-              {config.bank_transfer_enabled && (
-                <Radio value="BANK_TRANSFER">{getPaymentMethodLabel('BANK_TRANSFER')}</Radio>
-              )}
-              {config.crypto_enabled && (
-                <Radio value="CRYPTO">{getPaymentMethodLabel('CRYPTO')}</Radio>
-              )}
-            </Space>
+          <Radio.Group
+            value={paymentMethod}
+            onChange={e => setPaymentMethod(e.target.value)}
+          >
+            {methods.map(m => (
+              <Radio key={m.type} value={paymentTypeMap[m.type] || m.type}>{m.name}</Radio>
+            ))}
           </Radio.Group>
         </Form.Item>
 
@@ -285,6 +328,18 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
           </Space>
         </Form.Item>
       </Form>
+
+      <PaymentDetailModal
+        open={paymentModalVisible}
+        onClose={() => {
+          setPaymentModalVisible(false);
+          if (paymentInfo) {
+            onSuccess?.(paymentInfo);
+          }
+        }}
+        paymentInfo={paymentInfo || {}}
+        donationInfo={donationInfo || {}}
+      />
     </Card>
   );
 };

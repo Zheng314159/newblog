@@ -233,8 +233,8 @@ async def lifespan(app: FastAPI):
         column_formatters = {
             "uploader": lambda m, p: m.uploader.username if m.uploader else ""
         }
-        can_create = False
-        can_edit = False
+        can_create = True
+        can_edit = True
         can_delete = True
         can_view_details = True
         name = "多媒体文件"
@@ -243,8 +243,8 @@ async def lifespan(app: FastAPI):
     class OAuthAccountAdmin(ModelView, model=OAuthAccount):
         column_list = ["id", "user_id", "provider", "provider_user_id", "provider_username", "created_at", "updated_at"]
         form_columns = ["user_id", "provider", "provider_user_id", "provider_username", "provider_email", "provider_avatar_url"]
-        can_create = False
-        can_edit = False
+        can_create = True
+        can_edit = True
         can_delete = True
         can_view_details = True
         name = "OAuth账号绑定"
@@ -279,20 +279,28 @@ async def lifespan(app: FastAPI):
             return await super().insert_model(request, data)
 
     class DonationConfigAdmin(ModelView, model=DonationConfig):
-        column_list = ["id", "is_enabled", "title", "alipay_enabled", "wechat_enabled", "paypal_enabled", "total_donations", "total_amount"]
-        form_columns = ["is_enabled", "title", "alipay_enabled", "wechat_enabled", "paypal_enabled"]
+        column_list = [
+            "id", "is_enabled", "title", "description", "alipay_enabled", "wechat_enabled", "paypal_enabled", "preset_amounts", "created_at", "updated_at"
+        ]
+        form_columns = [
+            "is_enabled", "title", "description", "alipay_enabled", "wechat_enabled", "paypal_enabled", "preset_amounts"
+        ]
         can_create = True
         can_edit = True
-        can_delete = False
+        can_delete = True
         can_view_details = True
         name = "捐赠配置"
         name_plural = "捐赠配置"
         form_include_pk = False
 
     class DonationRecordAdmin(ModelView, model=DonationRecord):
-        column_list = ["id", "donor_name", "amount", "currency", "payment_method", "payment_status", "created_at"]
-        form_columns = ["donor_name", "amount", "currency", "payment_method", "payment_status", "message"]
-        can_create = False
+        column_list = [
+            "id", "donor_name", "donor_email", "donor_message", "is_anonymous", "amount", "currency", "payment_method", "payment_status", "transaction_id", "user_id", "goal_id", "created_at", "updated_at", "paid_at"
+        ]
+        form_columns = [
+            "donor_name", "donor_email", "donor_message", "is_anonymous", "amount", "currency", "payment_method", "payment_status", "transaction_id", "user_id", "goal_id", "paid_at"
+        ]
+        can_create = True
         can_edit = True
         can_delete = True
         can_view_details = True
@@ -301,8 +309,8 @@ async def lifespan(app: FastAPI):
         form_include_pk = False
 
     class DonationGoalAdmin(ModelView, model=DonationGoal):
-        column_list = ["id", "title", "target_amount", "current_amount", "currency", "is_active", "is_completed"]
-        form_columns = ["title", "target_amount", "current_amount", "currency", "is_active", "description"]
+        column_list = ["id", "title", "description", "target_amount", "current_amount", "currency", "start_date", "end_date", "is_active", "is_completed", "created_at", "updated_at"]
+        form_columns = ["title", "description", "target_amount", "current_amount", "currency", "start_date", "end_date", "is_active"]
         can_create = True
         can_edit = True
         can_delete = True

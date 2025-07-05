@@ -3,6 +3,7 @@ import { Routes, Route, Outlet } from "react-router-dom";
 import RequireAuth from "../components/Auth/RequireAuth";
 import MainLayout from "../layouts/MainLayout";
 import Media from '../pages/Media/Media';
+import DonationResult from '../pages/Donation/DonationResult';
 
 const Home = lazy(() => import("../pages/Home/Home"));
 const Login = lazy(() => import("../pages/Auth/Login"));
@@ -45,6 +46,7 @@ const AppRouter: React.FC = () => (
         <Route path="/admin" element={<RequireAuth role="ADMIN"><Admin /></RequireAuth>} />
         <Route path="/media" element={<Media />} />
         <Route path="/donation" element={<DonationPage />} />
+        <Route path="/donation/result" element={<DonationResult />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

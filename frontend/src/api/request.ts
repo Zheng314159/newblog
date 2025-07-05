@@ -2,7 +2,7 @@ import axios from "axios";
 import { TokenManager } from "../utils/tokenManager";
 
 const request = axios.create({
-  baseURL: "/api/v1", // 可根据需要调整
+  baseURL: "/api/v1", // 恢复基础路径，所有API方法只写相对路径
   timeout: 10000,
 });
 

@@ -71,9 +71,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/v1/donation/config",  # 允许匿名访问捐赠配置
             "/api/v1/donation/public-stats",  # 允许匿名访问公开统计
             "/api/v1/donation/goals",  # 允许匿名访问捐赠目标
+            "/api/v1/donation/create",  # 允许匿名访问捐赠创建接口
             "/admin", "/admin/",  # 放行admin后台
             "/jianai", "/jianai/",  # 放行自定义后台路径
             ADMIN_PATH, ADMIN_PATH + "/",
+            "/donation/result",  # 允许匿名访问捐赠结果页
         ]
         # 新增：统一去除末尾斜杠进行判断
         normalized_path = request.url.path.rstrip('/') or '/'

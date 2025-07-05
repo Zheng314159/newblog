@@ -10,10 +10,10 @@ from app.models.user import UserRole
 async def get_current_user(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
-) -> dict:
-    """Get current user from request state"""
+) -> Optional[dict]:
+    """Get current user from request state, allow anonymous"""
     if not hasattr(request.state, 'user'):
-        raise AuthenticationError("User not authenticated")
+        return None  # 匿名用户
     return request.state.user
 
 
