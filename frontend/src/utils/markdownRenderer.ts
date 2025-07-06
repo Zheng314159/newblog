@@ -101,7 +101,9 @@ export class MarkdownRenderer {
       // 为行内代码添加样式
       .replace(/<code>/g, '<code class="markdown-inline-code">')
       // 为链接添加样式
-      .replace(/<a /g, '<a class="markdown-link" target="_blank" rel="noopener noreferrer" ');
+      .replace(/<a /g, '<a class="markdown-link" target="_blank" rel="noopener noreferrer" ')
+      // 视频自动预览：将img标签src为常见视频格式的替换为video标签
+      .replace(/<img([^>]+?)src=["']([^"']+\.(mp4|webm|ogg|mov|m4v|avi|flv|wmv|3gp|mkv))["']([^>]*)>/gi, '<video src="$2" controls style="max-width:100%"></video>');
 
     return rendered;
   }

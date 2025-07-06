@@ -12,9 +12,6 @@ const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId })
   const { isAuthenticated } = useSelector((state: RootState) => state.user);
   const { message } = App.useApp();
 
-  // 调试信息
-  console.log('CommentSection render:', { articleId, isAuthenticated, content });
-
   const fetchComments = () => {
     setLoading(true);
     getComments(articleId).then((res: any) => {
@@ -50,22 +47,6 @@ const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId })
   return (
     <div>
       <h3>评论</h3>
-      
-      {/* 调试信息 */}
-      <div style={{ 
-        padding: '10px', 
-        backgroundColor: '#f0f8ff', 
-        border: '1px solid #ddd', 
-        borderRadius: '4px',
-        marginBottom: '10px',
-        fontSize: '12px'
-      }}>
-        <strong>调试信息:</strong><br/>
-        认证状态: {isAuthenticated ? '已登录' : '未登录'}<br/>
-        文章ID: {articleId}<br/>
-        评论数量: {comments.length}<br/>
-        加载状态: {loading ? '加载中' : '已加载'}
-      </div>
 
       {isAuthenticated && (
         <Form.Item>
@@ -109,7 +90,7 @@ const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId })
             <div 
               className="markdown-content"
               dangerouslySetInnerHTML={{ 
-                __html: MarkdownRenderer.render(item.content || "") 
+                __html: MarkdownRenderer.postprocessContent(MarkdownRenderer.render(item.content || "")) 
               }}
               style={{
                 fontSize: '14px',

@@ -104,6 +104,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
             (
                 request.url.path.startswith("/api/v1/tags") and request.method == "GET"
             )
+            # 允许匿名访问 /api/v1/articles/{id} 详情页
+            or (
+                request.url.path.startswith("/api/v1/articles/")
+                and request.method == "GET"
+                and len(request.url.path.split("/")) == 5
+            )
+            # 允许匿名访问 /api/v1/articles/{id}/comments 评论列表
+            or (
+                request.url.path.startswith("/api/v1/articles/")
+                and request.url.path.endswith("/comments")
+                and request.method == "GET"
+                and len(request.url.path.split("/")) == 6
+            )
         )
         logger.info(f"Auth check for path: {request.url.path}, normalized: {normalized_path}, is_public: {is_public}")
         logger.info(f"Normalized public paths: {normalized_public_paths}")

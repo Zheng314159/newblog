@@ -7,7 +7,7 @@ interface Props {
   onChange: (v: string) => void;
   height?: number;
   placeholder?: string;
-  preview?: "live" | "edit" | "preview";
+  preview?: "live" | "edit" | "preview" | "split";
 }
 
 const MarkdownEditor: React.FC<Props> = ({ 
@@ -45,21 +45,52 @@ const MarkdownEditor: React.FC<Props> = ({
     }
   };
 
-  return (
-    <div data-color-mode="light">
-      <MDEditor 
-        value={value} 
-        onChange={handleChange} 
-        height={height}
-        preview={preview}
-        previewOptions={previewOptions}
-        // 启用数学公式支持
-        textareaProps={{
-          placeholder: placeholder,
-        }}
-      />
-    </div>
-  );
+  // 自定义分屏模式
+  if (preview === 'split') {
+    return (
+      <div style={{ display: 'flex', height }}>
+        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderRadius: '6px 0 0 6px', overflow: 'hidden' }}>
+          <MDEditor
+            value={value}
+            onChange={handleChange}
+            height={height}
+            preview="edit"
+            textareaProps={{ placeholder }}
+          />
+        </div>
+        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderLeft: 'none', borderRadius: '0 6px 6px 0', background: '#fff', overflow: 'auto', padding: 16 }}>
+          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(value) }} />
+        </div>
+      </div>
+    );
+  }
+
+  // 其它模式（纯编辑、纯预览）
+  if (preview === 'edit') {
+    return (
+      <div data-color-mode="light">
+        <MDEditor
+          value={value}
+          onChange={handleChange}
+          height={height}
+          preview="edit"
+          textareaProps={{
+            placeholder: placeholder,
+          }}
+        />
+      </div>
+    );
+  }
+  // 纯预览模式
+  if (preview === 'preview') {
+    return (
+      <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', background: '#fff', padding: 16, minHeight: height, overflow: 'auto' }}>
+        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(value) }} />
+      </div>
+    );
+  }
+  // 其它情况默认返回 null
+  return null;
 };
 
 export default MarkdownEditor;

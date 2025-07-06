@@ -6,6 +6,7 @@ import App from "./app/App";
 import store from "./app/store";
 import "antd/dist/reset.css";
 import "./styles/global.css";
+import "katex/dist/katex.min.css";
 
 const router = createBrowserRouter([
   {

@@ -3,7 +3,7 @@ import { useParams, useNavigate, unstable_usePrompt as usePrompt } from "react-r
 import { Card, Form, Input, Button, Select, Spin, Row, Col, Divider, Space, App } from "antd";
 import { createArticle, getArticle, updateArticle } from "../../api/article";
 import MarkdownEditor from "../../components/MarkdownEditor/MarkdownEditor";
-import MarkdownViewer from "../../components/MarkdownViewer/MarkdownViewer";
+import MarkdownRenderer from "../../utils/markdownRenderer";
 import { getTags } from "../../api/tag";
 import { useSelector } from "react-redux";
 import { RootState } from "../../app/store";
@@ -26,6 +26,7 @@ const ArticleEdit: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'published' | 'draft'>('draft');
   const [isDirty, setIsDirty] = useState(false);
   const [articleStatus, setArticleStatus] = useState<'draft' | 'published' | undefined>(undefined);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     getTags().then((res: any) => {
@@ -154,9 +155,104 @@ const ArticleEdit: React.FC = () => {
     setContent((prev) => prev + (prev && !prev.endsWith("\n") ? "\n" : "") + insertText + "\n");
   };
 
-  const renderEditor = () => (
-    <div style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: '10px' }}>
+  // 新的编辑器渲染逻辑
+  const renderEditorArea = (customHeight?: number) => {
+    if (previewMode === 'edit') {
+      return (
+        <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', background: '#fff', height: customHeight || 550 }}>
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            height={customHeight || 550}
+            preview="edit"
+            placeholder="请输入文章内容... (支持 Markdown 和 LaTeX 公式)"
+          />
+        </div>
+      );
+    }
+    if (previewMode === 'preview') {
+      return (
+        <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', background: '#fff', padding: 16, minHeight: customHeight || 550, height: customHeight || 550, overflow: 'auto' }}>
+          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(content) }} />
+        </div>
+      );
+    }
+    // 分屏模式
+    return (
+      <div style={{ display: 'flex', height: customHeight || 550 }}>
+        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderRadius: '6px 0 0 6px', background: '#fff', overflow: 'hidden' }}>
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            height={customHeight || 550}
+            preview="edit"
+            placeholder="请输入文章内容... (支持 Markdown 和 LaTeX 公式)"
+          />
+        </div>
+        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderLeft: 'none', borderRadius: '0 6px 6px 0', background: '#fff', overflow: 'auto', padding: 16 }}>
+          <div className="markdown-content" style={{ height: '100%' }} dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(content) }} />
+        </div>
+      </div>
+    );
+  };
+
+  // 全屏模式下吸顶的模式切换按钮
+  const fullscreenToolbar = (
+    <div style={{
+      position: 'fixed',
+      top: 24,
+      right: '50%',
+      transform: 'translateX(50%)',
+      zIndex: 10001,
+      background: 'rgba(255,255,255,0.95)',
+      borderRadius: 6,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+      padding: '4px 12px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8
+    }}>
+      <Space size="middle" align="center">
+        <Button
+          type={previewMode === 'edit' ? 'primary' : 'default'}
+          size="middle"
+          style={{ minWidth: 90, borderRadius: 6, fontWeight: 500 }}
+          onClick={() => setPreviewMode('edit')}
+        >
+          编辑模式
+        </Button>
+        <Button
+          type={previewMode === 'split' ? 'primary' : 'default'}
+          size="middle"
+          style={{ minWidth: 90, borderRadius: 6, fontWeight: 500 }}
+          onClick={() => setPreviewMode('split')}
+        >
+          分屏模式
+        </Button>
+        <Button
+          type={previewMode === 'preview' ? 'primary' : 'default'}
+          size="middle"
+          style={{ minWidth: 90, borderRadius: 6, fontWeight: 500 }}
+          onClick={() => setPreviewMode('preview')}
+        >
+          预览模式
+        </Button>
+        <Button
+          type="default"
+          size="middle"
+          style={{ minWidth: 90, borderRadius: 6, fontWeight: 500 }}
+          onClick={() => setIsFullscreen(false)}
+        >
+          退出全屏
+        </Button>
+      </Space>
+    </div>
+  );
+
+  // 编辑器区域渲染（含全屏支持）
+  const editorAreaWithToolbar = (
+    <>
+      <div style={{ marginBottom: 12 }}>
         <Space>
           <Button 
             type={previewMode === 'edit' ? 'primary' : 'default'}
@@ -176,79 +272,24 @@ const ArticleEdit: React.FC = () => {
           >
             预览模式
           </Button>
+          <Button
+            type={isFullscreen ? 'primary' : 'default'}
+            onClick={() => setIsFullscreen(true)}
+          >
+            全屏模式
+          </Button>
         </Space>
       </div>
-      
-      {previewMode === 'edit' && (
-        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderRadius: '6px' }}>
-          <MarkdownEditor 
-            value={content} 
-            onChange={setContent} 
-            height={550}
-            placeholder="请输入文章内容... (支持 Markdown 和 LaTeX 公式)"
-          />
-        </div>
-      )}
-      
-      {previewMode === 'preview' && (
-        <div style={{ 
-          flex: 1, 
-          border: '1px solid #d9d9d9', 
-          borderRadius: '6px',
-          padding: '16px',
-          overflow: 'auto',
-          backgroundColor: '#fff'
-        }}>
-          <MarkdownViewer content={content} />
-        </div>
-      )}
-    </div>
-  );
-
-  const renderSplitView = () => (
-    <Row gutter={16} style={{ height: '600px' }}>
-      <Col span={12} style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#666' }}>
-          编辑区域
-        </div>
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          border: '1px solid #d9d9d9',
-          borderRadius: '6px',
-          marginBottom: 8,
-          background: '#fff'
-        }}>
-          <MarkdownEditor
-            value={content}
-            onChange={setContent}
-            height={550}
-            placeholder="请输入文章内容... (支持 Markdown 和 LaTeX 公式)"
-          />
-        </div>
-        <div style={{
-          minHeight: 48,
-          background: '#fff',
-          position: 'relative',
-          zIndex: 2,
-          display: 'flex',
-          alignItems: 'center',
-          flexShrink: 0
-        }}>
-          <MediaUpload onUpload={handleInsertMedia} />
-        </div>
-      </Col>
-      <Col span={12} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderRadius: '6px', padding: '16px', overflow: 'auto', backgroundColor: '#fff' }}>
-          <MarkdownViewer content={content} />
-        </div>
-      </Col>
-    </Row>
+      {renderEditorArea()}
+      {/* 只在非全屏时渲染上传按钮 */}
+      {!isFullscreen && <MediaUpload onUpload={handleInsertMedia} />}
+    </>
   );
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 0 0 0' }}>
       <Card 
+        style={{ marginBottom: 0, paddingBottom: 0 }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{id && id !== 'new' ? "编辑文章" : "发布新文章"}</span>
@@ -261,7 +302,7 @@ const ArticleEdit: React.FC = () => {
         }
       >
         <Spin spinning={loading}>
-          <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Form form={form} layout="vertical" onFinish={onFinish} style={{ marginBottom: 0, paddingBottom: 0 }}>
             <Row gutter={16}>
               <Col span={16}>
                 <Form.Item name="title" label="文章标题" rules={[{ required: true, message: '请输入文章标题' }]}>
@@ -309,7 +350,31 @@ const ArticleEdit: React.FC = () => {
             </div>
 
             <Form.Item label="文章内容" required>
-              {previewMode === 'split' ? renderSplitView() : renderEditor()}
+              {isFullscreen ? (
+                <div style={{
+                  position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
+                  background: '#fff', zIndex: 9999, overflow: 'hidden', padding: 0, display: 'flex', flexDirection: 'column'
+                }}>
+                  {/* 吸顶模式切换按钮 */}
+                  {fullscreenToolbar}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginTop: 16, paddingBottom: 64 }}>
+                    {editorAreaWithToolbar && renderEditorArea(window.innerHeight)}
+                  </div>
+                  <div style={{
+                    position: 'fixed',
+                    bottom: 24,
+                    right: 32,
+                    zIndex: 10001,
+                    border: 'none',
+                    padding: 0,
+                    background: 'none',
+                    boxShadow: 'none',
+                    textAlign: 'center'
+                  }}>
+                    <MediaUpload onUpload={handleInsertMedia} />
+                  </div>
+                </div>
+              ) : editorAreaWithToolbar}
             </Form.Item>
 
             <Divider />
