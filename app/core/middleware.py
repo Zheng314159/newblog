@@ -40,6 +40,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
     """Authentication middleware"""
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # 静态资源放行：uploads 目录
+        if request.url.path.startswith("/uploads/"):
+            logger.info(f"Uploads static resource path, skipping auth: {request.url.path}")
+            return await call_next(request)
+        
         # WebSocket路径白名单，直接放行
         if request.url.path.startswith("/api/v1/ws"):
             logger.info(f"WebSocket path, skipping auth: {request.url.path}")

@@ -207,39 +207,40 @@ const ArticleEdit: React.FC = () => {
 
   const renderSplitView = () => (
     <Row gutter={16} style={{ height: '600px' }}>
-      <Col span={12}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#666' }}>
-            编辑区域
-          </div>
-          <div style={{ flex: 1, border: '1px solid #d9d9d9', borderRadius: '6px', marginBottom: 8 }}>
-            <MarkdownEditor 
-              value={content} 
-              onChange={setContent} 
-              height={550}
-              placeholder="请输入文章内容... (支持 Markdown 和 LaTeX 公式)"
-            />
-          </div>
-          <div style={{ marginBottom: 0 }}>
-            <MediaUpload onUpload={handleInsertMedia} />
-          </div>
+      <Col span={12} style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#666' }}>
+          编辑区域
+        </div>
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          border: '1px solid #d9d9d9',
+          borderRadius: '6px',
+          marginBottom: 8,
+          background: '#fff'
+        }}>
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            height={550}
+            placeholder="请输入文章内容... (支持 Markdown 和 LaTeX 公式)"
+          />
+        </div>
+        <div style={{
+          minHeight: 48,
+          background: '#fff',
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
+          flexShrink: 0
+        }}>
+          <MediaUpload onUpload={handleInsertMedia} />
         </div>
       </Col>
-      <Col span={12}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#666' }}>
-            实时预览
-          </div>
-          <div style={{ 
-            flex: 1, 
-            border: '1px solid #d9d9d9', 
-            borderRadius: '6px',
-            padding: '16px',
-            overflow: 'auto',
-            backgroundColor: '#fff'
-          }}>
-            <MarkdownViewer content={content} />
-          </div>
+      <Col span={12} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, border: '1px solid #d9d9d9', borderRadius: '6px', padding: '16px', overflow: 'auto', backgroundColor: '#fff' }}>
+          <MarkdownViewer content={content} />
         </div>
       </Col>
     </Row>

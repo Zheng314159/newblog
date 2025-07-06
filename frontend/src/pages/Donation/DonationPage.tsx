@@ -27,7 +27,9 @@ import DonationForm from '../../components/Donation/DonationForm';
 import {
   getDonationGoals,
   getPublicDonationStats,
+  getDonationConfig,
   DonationGoal,
+  DonationConfig,
 } from '../../api/donation';
 import confetti from 'canvas-confetti';
 
@@ -37,6 +39,7 @@ const { Title, Text, Paragraph } = Typography;
 const DonationPage: React.FC = () => {
   const [goals, setGoals] = useState<DonationGoal[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [config, setConfig] = useState<DonationConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDonationModal, setShowDonationModal] = useState(false);
 
@@ -55,13 +58,15 @@ const DonationPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [goalsResponse, statsResponse] = await Promise.all([
+      const [goalsResponse, statsResponse, configResponse] = await Promise.all([
         getDonationGoals(true),
         getPublicDonationStats(),
+        getDonationConfig(),
       ]);
       
       setGoals(goalsResponse.data);
       setStats(statsResponse.data);
+      setConfig(configResponse.data);
     } catch (error) {
       message.error('加载数据失败');
     } finally {
@@ -188,41 +193,43 @@ const DonationPage: React.FC = () => {
               </Col>
             )}
             {/* 捐赠统计 */}
-            <Col xs={24}>
-              <Card title="捐赠统计">
-                <Row gutter={[16, 16]}>
-                  <Col span={12}>
-                    <Statistic
-                      title="总捐赠次数"
-                      value={stats?.total_donations || 0}
-                      prefix={<UserOutlined />}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="总捐赠金额"
-                      value={stats?.total_amount || 0}
-                      prefix={<DollarOutlined />}
-                      suffix="元"
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="活跃目标"
-                      value={stats?.active_goals || 0}
-                      prefix={<TrophyOutlined />}
-                    />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic
-                      title="货币单位"
-                      value={stats?.currency || 'CNY'}
-                      prefix={<DollarOutlined />}
-                    />
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
+            {config?.is_enabled && (
+              <Col xs={24}>
+                <Card title="捐赠统计">
+                  <Row gutter={[16, 16]}>
+                    <Col span={12}>
+                      <Statistic
+                        title="总捐赠次数"
+                        value={stats?.total_donations || 0}
+                        prefix={<UserOutlined />}
+                      />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic
+                        title="总捐赠金额"
+                        value={stats?.total_amount || 0}
+                        prefix={<DollarOutlined />}
+                        suffix="元"
+                      />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic
+                        title="活跃目标"
+                        value={stats?.active_goals || 0}
+                        prefix={<TrophyOutlined />}
+                      />
+                    </Col>
+                    <Col span={12}>
+                      <Statistic
+                        title="货币单位"
+                        value={stats?.currency || 'CNY'}
+                        prefix={<DollarOutlined />}
+                      />
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            )}
             {/* 捐赠说明 */}
             <Col xs={24}>
               <Card title="捐赠说明">

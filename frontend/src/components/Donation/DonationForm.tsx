@@ -171,10 +171,12 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
   if (!config.is_enabled) {
     return (
       <Card>
-        <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <HeartOutlined style={{ fontSize: '48px', color: '#ff4d4f' }} />
-          <Title level={3}>捐赠功能暂未开放</Title>
-          <Text type="secondary">感谢您的关注，捐赠功能正在准备中...</Text>
+        <div style={{ textAlign: 'center', padding: '10px 0 40px 0' }}>
+          <Title level={3} style={{ marginBottom: 32 }}>感谢您对我们的支持与理解</Title>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 64, alignItems: 'center' }}>
+            <img src="/uploads/images/pay1.png" alt="二维码1" style={{ width: 180, height: 180 }} />
+            <img src="/uploads/images/pay2.png" alt="二维码2" style={{ width: 180, height: 180 }} />
+          </div>
         </div>
       </Card>
     );

@@ -21,6 +21,7 @@ from sqlmodel import SQLModel
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import engine, create_db_and_tables, async_session
@@ -353,6 +354,10 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan
 )
+
+# 挂载 uploads 静态资源目录
+import os
+app.mount("/uploads", StaticFiles(directory=os.path.abspath("uploads")), name="uploads")
 
 # Setup middleware
 setup_middleware(app)  # 恢复中间件

@@ -66,7 +66,11 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onUpload }) => {
       <Upload
         showUploadList={false}
         beforeUpload={beforeUploadImage}
-        customRequest={({ file, onSuccess, onError }) => handleUpload(file as File, "image", uploadImage).then(onSuccess).catch(onError)}
+        customRequest={({ file, onSuccess, onError }) =>
+          handleUpload(file as File, "image", uploadImage)
+            .then(() => onSuccess && onSuccess({}, file))
+            .catch((err) => onError && onError(err))
+        }
         accept="image/*"
       >
         <Button icon={<FileImageOutlined />}>上传图片</Button>
@@ -74,7 +78,11 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onUpload }) => {
       <Upload
         showUploadList={false}
         beforeUpload={beforeUploadVideo}
-        customRequest={({ file, onSuccess, onError }) => handleUpload(file as File, "video", uploadVideo).then(onSuccess).catch(onError)}
+        customRequest={({ file, onSuccess, onError }) =>
+          handleUpload(file as File, "video", uploadVideo)
+            .then(() => onSuccess && onSuccess({}, file))
+            .catch((err) => onError && onError(err))
+        }
         accept="video/*"
       >
         <Button icon={<VideoCameraOutlined />}>上传视频</Button>
@@ -82,7 +90,11 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onUpload }) => {
       <Upload
         showUploadList={false}
         beforeUpload={beforeUploadPdf}
-        customRequest={({ file, onSuccess, onError }) => handleUpload(file as File, "pdf", uploadPdf).then(onSuccess).catch(onError)}
+        customRequest={({ file, onSuccess, onError }) =>
+          handleUpload(file as File, "pdf", uploadPdf)
+            .then(() => onSuccess && onSuccess({}, file))
+            .catch((err) => onError && onError(err))
+        }
         accept="application/pdf"
       >
         <Button icon={<FilePdfOutlined />}>上传PDF</Button>
