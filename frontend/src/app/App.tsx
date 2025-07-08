@@ -53,7 +53,7 @@ const App: React.FC = () => {
     <ConfigProvider locale={zhCN} theme={{ algorithm: theme.defaultAlgorithm }}>
       <AntdApp>
         <Helmet>
-          <title>FastAPI 博客系统</title>
+          <title>基于极坐标系的理论物理框架</title>
         </Helmet>
         <AppRouter />
         <Notification />

@@ -174,8 +174,8 @@ const DonationForm: React.FC<DonationFormProps> = ({ onSuccess, onCancel }) => {
         <div style={{ textAlign: 'center', padding: '10px 0 40px 0' }}>
           <Title level={3} style={{ marginBottom: 32 }}>感谢您对我们的支持与理解</Title>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 64, alignItems: 'center' }}>
-            <img src="/uploads/images/pay1.png" alt="二维码1" style={{ width: 180, height: 180 }} />
-            <img src="/uploads/images/pay2.png" alt="二维码2" style={{ width: 180, height: 180 }} />
+            <img src="pay1.png" alt="二维码1" style={{ width: 180, height: 180 }} />
+            <img src="pay2.png" alt="二维码2" style={{ width: 180, height: 180 }} />
           </div>
         </div>
       </Card>

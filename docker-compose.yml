@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Redis 服务
+  redis:
+    image: redis:7-alpine
+    container_name: blog_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # FastAPI 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: blog_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./blog.db:/app/blog.db
+      - ./alembic:/app/alembic
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=sqlite:///./blog.db
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+  # 前端构建服务
+  frontend-build:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: blog_frontend_build
+    volumes:
+      - frontend_dist:/app/dist
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+
+  # Nginx 服务
+  nginx:
+    image: nginx:alpine
+    container_name: blog_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl:ro
+      - frontend_dist:/usr/share/nginx/html
+      - ./uploads:/usr/share/nginx/uploads
+    depends_on:
+      - backend
+      - frontend-build
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=443
+
+volumes:
+  redis_data:
+  frontend_dist: 

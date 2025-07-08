@@ -23,6 +23,7 @@ const OAuthTest = lazy(() => import("../pages/Test/OAuthTest"));
 const ConfigTest = lazy(() => import("../pages/Test/ConfigTest"));
 const DonationPage = lazy(() => import("../pages/Donation/DonationPage"));
 const NotFound = lazy(() => import("../pages/NotFound"));
+const PhysicsDiagramTest = lazy(() => import("../pages/Test/PhysicsDiagramTest"));
 
 const AppRouter: React.FC = () => (
   <Suspense fallback={<div>加载中...</div>}>
@@ -39,6 +40,7 @@ const AppRouter: React.FC = () => (
         <Route path="/comment-test" element={<CommentTest />} />
         <Route path="/oauth-test" element={<OAuthTest />} />
         <Route path="/config-test" element={<ConfigTest />} />
+        <Route path="/physics-diagram-test" element={<PhysicsDiagramTest />} />
         <Route path="/search" element={<Search />} />
         <Route path="/article/:id" element={<ArticleDetail />} />
         <Route path="/edit/:id" element={<RequireAuth><ArticleEdit /></RequireAuth>} />
