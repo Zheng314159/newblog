@@ -91,7 +91,7 @@ export class MarkdownRenderer {
   /**
    * 后处理渲染结果
    */
-  private static postprocessContent(rendered: string): string {
+  static postprocessContent(rendered: string): string {
     // 添加额外的样式类
     rendered = rendered
       // 为表格添加样式

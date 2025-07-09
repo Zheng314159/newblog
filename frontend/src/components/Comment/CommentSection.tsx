@@ -4,6 +4,7 @@ import { getComments, addComment } from "../../api/comment";
 import { useSelector } from "react-redux";
 import { RootState } from "../../app/store";
 import MarkdownRenderer from "../../utils/markdownRenderer";
+import DOMPurify from "dompurify";
 
 const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId }) => {
   const [comments, setComments] = useState<any[]>([]);
@@ -53,13 +54,13 @@ const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId })
           <Input.TextArea
             rows={3}
             value={content}
-            onChange={e => setContent(e.target.value)}
+            onChange={(e) => setContent(e.target.value)}
             placeholder="写下你的评论... (支持 Markdown 和 LaTeX 公式)"
           />
-          <Button 
-            type="primary" 
-            onClick={handleSubmit} 
-            loading={loading} 
+          <Button
+            type="primary"
+            onClick={handleSubmit}
+            loading={loading}
             style={{ marginTop: 8 }}
             disabled={!content.trim()}
           >
@@ -69,13 +70,15 @@ const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId })
       )}
 
       {!isAuthenticated && (
-        <div style={{ 
-          padding: '10px', 
-          backgroundColor: '#fff7e6', 
-          border: '1px solid #ffd591', 
-          borderRadius: '4px',
-          marginBottom: '10px'
-        }}>
+        <div
+          style={{
+            padding: "10px",
+            backgroundColor: "#fff7e6",
+            border: "1px solid #ffd591",
+            borderRadius: "4px",
+            marginBottom: "10px",
+          }}
+        >
           请先登录后再发表评论
         </div>
       )}
@@ -83,22 +86,31 @@ const CommentSection: React.FC<{ articleId: string | number }> = ({ articleId })
       <List
         dataSource={comments}
         loading={loading}
-        locale={{ emptyText: '暂无评论' }}
-        renderItem={item => (
-          <div style={{ borderBottom: '1px solid #eee', marginBottom: 8, paddingBottom: 8 }}>
-            <div style={{ fontWeight: 'bold' }}>{item.author?.username || "匿名"}</div>
-            <div 
+        locale={{ emptyText: "暂无评论" }}
+        renderItem={(item) => (
+          <div
+            style={{
+              borderBottom: "1px solid #eee",
+              marginBottom: 8,
+              paddingBottom: 8,
+            }}
+          >
+            <div style={{ fontWeight: "bold" }}>
+              {item.author?.username || "匿名"}
+            </div>
+            <div
               className="markdown-content"
-              dangerouslySetInnerHTML={{ 
-                __html: MarkdownRenderer.postprocessContent(MarkdownRenderer.render(item.content || "")) 
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(MarkdownRenderer.postprocessContent(
+                  MarkdownRenderer.render(item.content || "")))
               }}
               style={{
-                fontSize: '14px',
-                lineHeight: '1.6',
-                marginTop: '4px'
+                fontSize: "14px",
+                lineHeight: "1.6",
+                marginTop: "4px",
               }}
             />
-            <div style={{ color: '#888', fontSize: 12, marginTop: '8px' }}>
+            <div style={{ color: "#888", fontSize: 12, marginTop: "8px" }}>
               {item.created_at?.slice(0, 16)}
             </div>
           </div>

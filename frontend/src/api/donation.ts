@@ -192,6 +192,6 @@ export async function getPaymentMethods() {
 // 公开捐赠榜单API（如后端未实现可用getDonationRecords的前10条作为临时方案）
 export async function getPublicDonationRecords(limit: number = 10) {
   // 假设后端有/api/v1/donation/records/public，若无则用/records?skip=0&limit=10
-  // return request.get('/api/v1/donation/records/public', { params: { limit } });
+  // return request.get('/donation/records/public', { params: { limit } });
   return request.get('/donation/records', { params: { skip: 0, limit } });
 } 

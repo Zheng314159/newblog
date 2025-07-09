@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import MarkdownRenderer from "../../utils/markdownRenderer";
+import DOMPurify from "dompurify";
 
 interface MarkdownViewerProps {
   content: string;
@@ -21,7 +22,7 @@ const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   const html = useMemo(() => {
     try {
       const rendered = MarkdownRenderer.render(content || "");
-      const postProcessed = MarkdownRenderer.postprocessContent(rendered);
+      const postProcessed = DOMPurify.sanitize(MarkdownRenderer.postprocessContent(rendered));
       console.log('[MarkdownViewer] content:', content, '\n[MarkdownViewer] 渲染结果:', postProcessed);
       return postProcessed;
     } catch (error) {
