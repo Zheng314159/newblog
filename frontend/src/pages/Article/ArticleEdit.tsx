@@ -8,6 +8,7 @@ import { getTags } from "../../api/tag";
 import { useSelector } from "react-redux";
 import { RootState } from "../../app/store";
 import MediaUpload from "../../components/Upload/MediaUpload";
+import DOMPurify from "dompurify";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -173,7 +174,7 @@ const ArticleEdit: React.FC = () => {
     if (previewMode === 'preview') {
       return (
         <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', background: '#fff', padding: 16, minHeight: customHeight || 550, height: customHeight || 550, overflow: 'auto' }}>
-          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(content) }} />
+          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(MarkdownRenderer.postprocessContent(MarkdownRenderer.render(content))) }} />
         </div>
       );
     }
@@ -190,7 +191,7 @@ const ArticleEdit: React.FC = () => {
           />
         </div>
         <div style={{ flex: 1, border: '1px solid #d9d9d9', borderLeft: 'none', borderRadius: '0 6px 6px 0', background: '#fff', overflow: 'auto', padding: 16 }}>
-          <div className="markdown-content" style={{ height: '100%' }} dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(content) }} />
+          <div className="markdown-content" style={{ height: '100%' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(MarkdownRenderer.postprocessContent(MarkdownRenderer.render(content))) }} />
         </div>
       </div>
     );

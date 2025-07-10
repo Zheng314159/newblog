@@ -1,6 +1,7 @@
 import React from "react";
 import MDEditor from "@uiw/react-md-editor";
 import MarkdownRenderer from "../../utils/markdownRenderer";
+import DOMPurify from "dompurify";
 
 interface Props {
   value: string;
@@ -59,7 +60,7 @@ const MarkdownEditor: React.FC<Props> = ({
           />
         </div>
         <div style={{ flex: 1, border: '1px solid #d9d9d9', borderLeft: 'none', borderRadius: '0 6px 6px 0', background: '#fff', overflow: 'auto', padding: 16 }}>
-          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(value) }} />
+          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(MarkdownRenderer.postprocessContent(MarkdownRenderer.render(value))) }} />
         </div>
       </div>
     );
@@ -85,7 +86,7 @@ const MarkdownEditor: React.FC<Props> = ({
   if (preview === 'preview') {
     return (
       <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', background: '#fff', padding: 16, minHeight: height, overflow: 'auto' }}>
-        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: MarkdownRenderer.render(value) }} />
+        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(MarkdownRenderer.postprocessContent(MarkdownRenderer.render(value))) }} />
       </div>
     );
   }
