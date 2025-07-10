@@ -4,3 +4,4 @@ myblogenv
 __pycache__
 **/__pycache__/
 .env
+uploads
