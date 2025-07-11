@@ -1,5 +1,7 @@
 version: '3.8'
 
+env_file: .env.production
+
 services:
   # Redis 服务
   redis:
@@ -11,6 +13,11 @@ services:
       - redis_data:/data
     restart: unless-stopped
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # FastAPI 后端服务
   backend:
@@ -25,10 +32,16 @@ services:
       - ./blog.db:/app/blog.db
       - ./alembic:/app/alembic
     environment:
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=sqlite:///./blog.db
+      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
       - ENVIRONMENT=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      
     depends_on:
       - redis
     restart: unless-stopped
@@ -43,7 +56,7 @@ services:
     volumes:
       - frontend_dist:/app/dist
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_API_BASE_URL=http://backend:8000/api/v1
 
   # Nginx 服务
   nginx:
@@ -64,7 +77,16 @@ services:
     environment:
       - NGINX_HOST=localhost
       - NGINX_PORT=443
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://localhost || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   redis_data:
-  frontend_dist: 
+  frontend_dist:
+
+networks:
+  default:
+    name: blog_net

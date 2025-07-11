@@ -1,8 +1,10 @@
 import axios from "axios";
 import { TokenManager } from "../utils/tokenManager";
 
+// ✅ 默认使用 "/api/v1"，可通过环境变量覆盖（用于未来脱离代理部署）
+const baseURL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 const request = axios.create({
-  baseURL: "/api/v1", // 恢复基础路径，所有API方法只写相对路径
+  baseURL, // 所有请求将以此为前缀
   timeout: 10000,
 });
 
@@ -13,12 +15,13 @@ async function refreshToken() {
   if (!refreshPromise) {
     isRefreshing = true;
     const refresh_token = TokenManager.getRefreshToken();
-    refreshPromise = axios.post("/api/v1/auth/refresh", { refresh_token })
-      .then(res => {
+    refreshPromise = axios
+      .post(`${baseURL}/auth/refresh`, { refresh_token })
+      .then((res) => {
         TokenManager.storeTokens(res.data);
         return res.data.access_token;
       })
-      .catch(err => {
+      .catch((err) => {
         TokenManager.clearTokens();
         window.location.href = "/login";
         throw err;
@@ -35,13 +38,13 @@ async function refreshToken() {
 request.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
-    console.log("[DEBUG] TokenManager.getAccessToken() =", token);
+    // console.log("[DEBUG] TokenManager.getAccessToken() =", token);
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
-      console.log("Request with token:", token.substring(0, 20) + "...");
+      // console.log("Request with token:", token.substring(0, 20) + "...");
     } else {
-      console.log("No token found for request");
+      // console.log("No token found for request");
     }
     return config;
   },
@@ -75,7 +78,7 @@ request.interceptors.response.use(
       }
     }
     if (error.response?.status === 401) {
-      TokenManager.debugTokens();
+      // TokenManager.debugTokens();
       TokenManager.clearTokens();
       if (isSendCodeApi) {
         window.alert('登录状态已失效，请重新登录后再操作！');

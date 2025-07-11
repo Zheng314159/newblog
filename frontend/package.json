@@ -34,6 +34,7 @@
     "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
+    "@types/node": "^24.0.13",
     "@types/react": "^18.2.62",
     "@types/react-dom": "^18.2.19",
     "@types/react-router-dom": "^5.3.3",
@@ -42,9 +43,8 @@
     "vite": "^5.2.10"
   },
   "pnpm": {
-  "overrides": {
-    "core-js": "^3.33.0"
+    "overrides": {
+      "core-js": "^3.33.0"
+    }
   }
-}
-
 }
