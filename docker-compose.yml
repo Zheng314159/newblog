@@ -2,6 +2,7 @@ version: '3.8'
 
 env_file: .env.production
 
+
 services:
   # Redis 服务
   redis:
@@ -58,6 +59,24 @@ services:
     environment:
       - VITE_API_BASE_URL=http://backend:8000/api/v1
 
+
+  frontend-dev:
+    image: node:20-alpine
+    working_dir: /app
+    container_name: blog_frontend_dev 
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app                     # 挂载代码目录，node_modules 也会在这儿
+      - pnpm_store:/root/.pnpm-store        # 持久化 pnpm 缓存目录，避免每次重装
+    depends_on:
+      - backend
+    restart: unless-stopped
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000/api/v1
+    command: sh -c "npm i -g pnpm && pnpm install && pnpm dev"
+
+
   # Nginx 服务
   nginx:
     image: nginx:alpine
@@ -86,6 +105,7 @@ services:
 volumes:
   redis_data:
   frontend_dist:
+  pnpm_store:
 
 networks:
   default:
