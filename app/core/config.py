@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./blog.db"
+    environment: str = Field(default="development", alias="ENVIRONMENT") # 环境变量，默认为 development，可通过 .env 文件覆盖
     
     # JWT Settings
     secret_key: str = "your-super-secret-key-change-this-in-production-123456789"
@@ -62,6 +63,7 @@ class Settings(BaseSettings):
     https_proxy: Optional[str] = None
     no_proxy: Optional[str] = None
     
+
     # Scheduler/Notification dynamic config
     scheduler_cleanup_redis_enabled: bool = Field(default=True, alias="SCHEDULER_CLEANUP_REDIS_ENABLED")
     scheduler_cleanup_redis_cron: str = Field(default="0 * * * *", alias="SCHEDULER_CLEANUP_REDIS_CRON")
@@ -132,7 +134,8 @@ class Settings(BaseSettings):
         return ""
     
     class Config:
-        env_file = ".env"
+        env_file = os.getenv("ENV_FILE", ".env")
+        env_file_encoding = "utf-8"
         case_sensitive = False
     
     @classmethod

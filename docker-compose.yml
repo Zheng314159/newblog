@@ -20,6 +20,25 @@ services:
       timeout: 5s
       retries: 3
 
+  # PostgreSQL 数据库服务   
+  postgres:
+    image: postgres:15
+    container_name: blog_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: blog
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # FastAPI 后端服务
   backend:
     build:
