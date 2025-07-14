@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./blog.db"
     environment: str = Field(default="development", alias="ENVIRONMENT") # 环境变量，默认为 development，可通过 .env 文件覆盖
+    python_io_encoding: str = Field(default="utf-8", alias="PYTHONIOENCODING")  # 确保 Python IO 编码为 UTF-8
     
     # JWT Settings
     secret_key: str = "your-super-secret-key-change-this-in-production-123456789"
@@ -133,17 +134,17 @@ class Settings(BaseSettings):
                 return f.read()
         return ""
     
-    # class Config:
-    #     env_file = os.getenv("ENV_FILE", ".env")
-    #     env_file_encoding = "utf-8"
-    #     case_sensitive = False
-
-    model_config = SettingsConfigDict(
-        # env_file=f".env.{os.getenv('ENVIRONMENT', 'development')}",
-        env_file = os.getenv("ENV_FILE", ".env"),
-        env_file_encoding="utf-8",
+    class Config:
+        env_file = os.getenv("ENV_FILE", ".env")
+        env_file_encoding = "utf-8"
         case_sensitive = False
-    )    
+
+    # model_config = SettingsConfigDict(
+    #     env_file=f".env.{os.getenv('ENVIRONMENT', 'development')}",
+    #     env_file = os.getenv("ENV_FILE", ".env"),
+    #     env_file_encoding="utf-8",
+    #     case_sensitive = False
+    # )    
     
     @classmethod
     def reload(cls):
