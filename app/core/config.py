@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 import os
 from dotenv import load_dotenv
@@ -133,10 +133,17 @@ class Settings(BaseSettings):
                 return f.read()
         return ""
     
-    class Config:
-        env_file = os.getenv("ENV_FILE", ".env")
-        env_file_encoding = "utf-8"
+    # class Config:
+    #     env_file = os.getenv("ENV_FILE", ".env")
+    #     env_file_encoding = "utf-8"
+    #     case_sensitive = False
+
+    model_config = SettingsConfigDict(
+        # env_file=f".env.{os.getenv('ENVIRONMENT', 'development')}",
+        env_file = os.getenv("ENV_FILE", ".env"),
+        env_file_encoding="utf-8",
         case_sensitive = False
+    )    
     
     @classmethod
     def reload(cls):
