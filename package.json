@@ -1,9 +1,0 @@
-{
-	"dependencies": {
-		"canvas-confetti": "^1.9.3",
-		"katex": "^0.16.22",
-		"markdown-it": "^14.1.0",
-		"markdown-it-katex": "^2.0.3",
-		"react-katex": "^3.1.0"
-	}
-}

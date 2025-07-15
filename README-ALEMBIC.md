@@ -59,6 +59,11 @@ alembic current
 # 在开发环境运行：
 ENVIRONMENT=development alembic upgrade head
 # 在生产环境运行：
+alembic -x env=production upgrade head
 ENVIRONMENT=production alembic upgrade head
 # Windows 用户（CMD 或 PowerShell）：
-$env:ENVIRONMENT="production"; alembic upgrade head
+  $env:ENVIRONMENT="production"; alembic upgrade head
+#  一键初始化脚本
+  ENVIRONMENT=production python scripts/init_db.py
+  $env:ENVIRONMENT="production"
+  python scripts/init_db.py
